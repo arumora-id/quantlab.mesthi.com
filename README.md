@@ -51,6 +51,9 @@ Aktifkan proxy di nginx dengan `deploy/nginx-binance-proxy.conf` (petunjuk ada d
   konfirmasi delta taker per candle, stop di balik candle pemicu, target POC, risiko 0,25% per trade, tutup di akhir sesi
   (`fabioProxy.ts`, spesifikasi dari agent Methoda). Ini proksi: footprint/order flow asli tidak tersedia dari candle.
 - **Kalman Trend**: filter Kalman tren linear lokal pada log harga (`kalman.ts`), output level dan slope.
+- **LuxAlgo SuperTrend AI (Clustering)**: konsep LuxAlgo (https://www.tradingview.com/script/wP7WWjLL/), ditulis ulang
+  dari rumus (`supertrendAI.ts`). Lisensi konsep LuxAlgo: CC BY-NC-SA 4.0, hanya untuk penggunaan non-komersial.
+- **SMC Structure (LuxAlgo-style)**: definisi struktur QuantLab sendiri (swing terkonfirmasi, BOS/CHoCH) ala SMC LuxAlgo (`smcStructure.ts`).
 - **Label "Riset"**: preset yang bukti untuk aturan persisnya masih lemah.
 - **Rule builder** (`src/lib/backtest/rules.ts`): gabungkan beberapa indikator dengan kondisi `>`, `<`, cross ↑, cross ↓,
   logika AND/OR, untuk entry/exit long dan short. Setup bisa disimpan per user.

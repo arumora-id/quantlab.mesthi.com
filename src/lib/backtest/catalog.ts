@@ -13,6 +13,8 @@ import {
 } from './indicators'
 import { kalmanTrend } from './kalman'
 import { pivotConfirmed } from './pivots'
+import { smcStructure } from './smcStructure'
+import { supertrendAI } from './supertrendAI'
 import { tickerMtf } from './tickerMtf'
 import type { HigherTf, HtfContext } from './timeframe'
 import type { Candle, ParamDef } from './types'
@@ -634,6 +636,44 @@ export const INDICATORS: IndicatorDef[] = [
     outputs: ['signal'],
     note: 'signal 1 long, -1 short, 0 flat. Adaptasi satu timeframe dari metode 4H/15M/1M agent Ticker.',
     compute: tickerDivergence,
+  },
+  {
+    id: 'supertrendAI', name: 'SuperTrend AI (Clustering) [LuxAlgo]', category: 'Sinyal', placement: 'markers',
+    params: [
+      p('atrLength', 'ATR', 10, 1, 200),
+      p('minFactor', 'Faktor min', 1, 0.1, 20, 0.1),
+      p('maxFactor', 'Faktor maks', 5, 0.1, 20, 0.1),
+      p('step', 'Langkah faktor', 0.5, 0.1, 5, 0.1),
+      p('perfMemory', 'Memori performa', 10, 2, 500),
+      p('cluster', 'Klaster (0 terburuk, 1 rata-rata, 2 terbaik)', 2, 0, 2),
+      p('maxIter', 'Maks iterasi K-means', 1000, 1, 5000),
+    ],
+    outputs: ['signal', 'stop', 'factor', 'perfIdx'],
+    note: 'Konsep LuxAlgo (CC BY-NC-SA 4.0, hanya non-komersial), ditulis ulang dari rumus. signal 1 long / -1 short setelah flip; stop = trailing stop; factor = faktor terpilih K-means.',
+    compute: (c, q) =>
+      supertrendAI(c, {
+        atrLength: q.atrLength,
+        minFactor: q.minFactor,
+        maxFactor: q.maxFactor,
+        step: q.step,
+        perfMemory: q.perfMemory,
+        cluster: q.cluster,
+        maxIter: q.maxIter,
+      }),
+  },
+  {
+    id: 'smcStructure', name: 'Market Structure BOS/CHoCH (LuxAlgo-style)', category: 'Sinyal', placement: 'markers',
+    params: [p('length', 'Panjang swing', 5, 1, 200)],
+    outputs: ['trend', 'bos', 'choch', 'swingHigh', 'swingLow', 'bull', 'bear'],
+    note: 'Definisi QuantLab sendiri ala SMC LuxAlgo: swing = pivot terkonfirmasi; close menembus swing = BOS (searah) atau CHoCH (berbalik). trend 1/-1.',
+    compute: (c, q) => {
+      const s = smcStructure(c, q.length)
+      return {
+        ...s,
+        bull: s.bos.map((b, i) => (b === 1 || s.choch[i] === 1 ? 1 : 0)),
+        bear: s.bos.map((b, i) => (b === -1 || s.choch[i] === -1 ? 1 : 0)),
+      }
+    },
   },
   {
     id: 'tickerMtf', name: 'Ticker MTF: 4H Bias + 15M Divergence + 1M BOS', category: 'Sinyal', placement: 'markers',

@@ -147,6 +147,41 @@ export const PRESETS: Setup[] = [
     exitShort: all({ left: ind('tkm', 'signal'), op: '>', right: num(-1) }),
   },
   {
+    // LuxAlgo concept (CC BY-NC-SA 4.0, non-commercial), rewritten from formulas; see supertrendAI.ts
+    name: 'LuxAlgo SuperTrend AI (Clustering)',
+    research: true,
+    indicators: [
+      {
+        id: 'sai',
+        defId: 'supertrendAI',
+        params: { atrLength: 10, minFactor: 1, maxFactor: 5, step: 0.5, perfMemory: 10, cluster: 2, maxIter: 1000 },
+      },
+    ],
+    entryLong: all({ left: ind('sai', 'signal'), op: '>', right: num(0) }),
+    exitLong: all({ left: ind('sai', 'signal'), op: '<', right: num(1) }),
+    entryShort: all({ left: ind('sai', 'signal'), op: '<', right: num(0) }),
+    exitShort: all({ left: ind('sai', 'signal'), op: '>', right: num(-1) }),
+  },
+  {
+    // QuantLab's own SMC-style structure: trade internal (5) breaks in the direction of the swing (50) structure
+    name: 'SMC Structure (LuxAlgo-style)',
+    research: true,
+    indicators: [
+      { id: 'int', defId: 'smcStructure', params: { length: 5 } },
+      { id: 'sw', defId: 'smcStructure', params: { length: 50 } },
+    ],
+    entryLong: all(
+      { left: ind('int', 'trend'), op: '>', right: num(0) },
+      { left: ind('sw', 'trend'), op: '>', right: num(0) },
+    ),
+    exitLong: all({ left: ind('int', 'trend'), op: '<', right: num(0) }),
+    entryShort: all(
+      { left: ind('int', 'trend'), op: '<', right: num(0) },
+      { left: ind('sw', 'trend'), op: '<', right: num(0) },
+    ),
+    exitShort: all({ left: ind('int', 'trend'), op: '>', right: num(0) }),
+  },
+  {
     name: 'Kalman Trend',
     research: true,
     indicators: [{ id: 'kf', defId: 'kalman', params: { smooth: 20, slopeRatio: 0.01 } }],
