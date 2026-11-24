@@ -261,6 +261,11 @@ const pickSource = (c: Candle[], v: number) => source(c, SOURCES[v] ?? 'close')
 export const INDICATORS: IndicatorDef[] = [
   // ---------- Trend ----------
   {
+    id: 'price', name: 'Price (OHLC)', category: 'Trend', placement: 'overlay', params: [], outputs: ['close', 'open', 'high', 'low'],
+    note: 'Berguna dengan timeframe lebih besar, mis. close mingguan sebagai filter tren.',
+    compute: (c) => ({ close: closes(c), open: source(c, 'open'), high: highs(c), low: lows(c) }),
+  },
+  {
     id: 'sma', name: 'SMA', category: 'Trend', placement: 'overlay', params: [len(20), srcParam], outputs: ['value'],
     compute: (c, q) => ({ value: sma(pickSource(c, q.source), q.length) }),
   },
@@ -491,12 +496,18 @@ export const INDICATORS: IndicatorDef[] = [
   },
   {
     id: 'donchian', name: 'Donchian Channels', category: 'Volatilitas', placement: 'overlay', params: [len(20)],
-    outputs: ['upper', 'middle', 'lower'],
-    note: 'Termasuk bar saat ini, seperti TradingView. Untuk breakout pakai high/low vs upper/lower.',
+    outputs: ['upper', 'middle', 'lower', 'upperPrev', 'lowerPrev'],
+    note: 'upper/lower termasuk bar saat ini, seperti TradingView. upperPrev/lowerPrev = kanal N bar sebelumnya; breakout: close > upperPrev.',
     compute: (c, q) => {
       const upper = highest(highs(c), q.length)
       const lower = lowest(lows(c), q.length)
-      return { upper, lower, middle: upper.map((u, i) => (u + lower[i]) / 2) }
+      return {
+        upper,
+        lower,
+        middle: upper.map((u, i) => (u + lower[i]) / 2),
+        upperPrev: shift(upper, 1),
+        lowerPrev: shift(lower, 1),
+      }
     },
   },
   {

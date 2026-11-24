@@ -10,6 +10,79 @@ const none = () => all()
 /** Starting points. They are examples to edit and compare, not recommendations. */
 export const PRESETS: Setup[] = [
   {
+    // Turtle-style Donchian breakout, traded only in the direction of the weekly trend
+    name: 'MTF: Weekly Trend + Donchian Breakout',
+    indicators: [
+      { id: 'wk', defId: 'price', params: {}, tf: '1w' },
+      { id: 'wema', defId: 'ema', params: { length: 21, source: 0 }, tf: '1w' },
+      { id: 'dc20', defId: 'donchian', params: { length: 20 } },
+      { id: 'dc10', defId: 'donchian', params: { length: 10 } },
+    ],
+    entryLong: all(
+      { left: ind('wk', 'close'), op: '>', right: ind('wema') },
+      { left: close, op: '>', right: ind('dc20', 'upperPrev') },
+    ),
+    exitLong: any(
+      { left: close, op: '<', right: ind('dc10', 'lowerPrev') },
+      { left: ind('wk', 'close'), op: '<', right: ind('wema') },
+    ),
+    entryShort: all(
+      { left: ind('wk', 'close'), op: '<', right: ind('wema') },
+      { left: close, op: '<', right: ind('dc20', 'lowerPrev') },
+    ),
+    exitShort: any(
+      { left: close, op: '>', right: ind('dc10', 'upperPrev') },
+      { left: ind('wk', 'close'), op: '>', right: ind('wema') },
+    ),
+  },
+  {
+    // time-series momentum: 12-week return sets the direction, daily SMA 50 confirms
+    name: 'MTF: Weekly Momentum + Daily Trend',
+    indicators: [
+      { id: 'wroc', defId: 'roc', params: { length: 12 }, tf: '1w' },
+      { id: 'sma', defId: 'sma', params: { length: 50, source: 0 }, tf: '1d' },
+    ],
+    entryLong: all(
+      { left: ind('wroc'), op: '>', right: num(0) },
+      { left: close, op: '>', right: ind('sma') },
+    ),
+    exitLong: any(
+      { left: ind('wroc'), op: '<', right: num(0) },
+      { left: close, op: '<', right: ind('sma') },
+    ),
+    entryShort: all(
+      { left: ind('wroc'), op: '<', right: num(0) },
+      { left: close, op: '<', right: ind('sma') },
+    ),
+    exitShort: any(
+      { left: ind('wroc'), op: '>', right: num(0) },
+      { left: close, op: '>', right: ind('sma') },
+    ),
+  },
+  {
+    name: 'MTF: Weekly + Daily Supertrend',
+    indicators: [
+      { id: 'wst', defId: 'supertrend', params: { length: 10, mult: 3 }, tf: '1w' },
+      { id: 'dst', defId: 'supertrend', params: { length: 10, mult: 3 }, tf: '1d' },
+    ],
+    entryLong: all(
+      { left: ind('wst', 'direction'), op: '>', right: num(0) },
+      { left: ind('dst', 'direction'), op: '>', right: num(0) },
+    ),
+    exitLong: any(
+      { left: ind('wst', 'direction'), op: '<', right: num(0) },
+      { left: ind('dst', 'direction'), op: '<', right: num(0) },
+    ),
+    entryShort: all(
+      { left: ind('wst', 'direction'), op: '<', right: num(0) },
+      { left: ind('dst', 'direction'), op: '<', right: num(0) },
+    ),
+    exitShort: any(
+      { left: ind('wst', 'direction'), op: '>', right: num(0) },
+      { left: ind('dst', 'direction'), op: '>', right: num(0) },
+    ),
+  },
+  {
     name: 'Ticker: Divergence + BOS',
     indicators: [{ id: 'tk', defId: 'tickerDivergence', params: { trend: 200, rsi: 14, swing: 3, wait: 20 } }],
     entryLong: all({ left: ind('tk', 'signal'), op: '>', right: num(0) }),

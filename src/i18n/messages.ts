@@ -105,6 +105,8 @@ const id = {
     addIndicatorOption: '+ Tambah indikator…',
     remove: (id: string) => `Hapus ${id}`,
     outputs: 'Output',
+    timeframe: 'Timeframe data',
+    tfChart: 'Sama dengan chart',
     rules: 'Aturan',
     groups: { entryLong: 'Entry long', exitLong: 'Exit long', entryShort: 'Entry short', exitShort: 'Exit short' },
     logic: 'logika',
@@ -187,6 +189,18 @@ const id = {
     allowShort: 'Boleh ambil untung saat harga turun (short)',
     custom: (name: string) => `Setup kustom aktif: ${name}. Pilih strategi di atas untuk kembali ke preset.`,
     presets: {
+      'MTF: Weekly Trend + Donchian Breakout': {
+        tag: 'Multi-timeframe',
+        desc: 'Gaya "Turtle": arah ditentukan tren mingguan (close di atas EMA 21 minggu), lalu masuk saat harga harian menembus titik tertinggi 20 hari. Keluar saat menembus titik terendah 10 hari atau tren mingguan berbalik.',
+      },
+      'MTF: Weekly Momentum + Daily Trend': {
+        tag: 'Multi-timeframe',
+        desc: 'Momentum: ikut arah kalau harga 12 minggu terakhir naik, dan harga harian di atas rata-rata 50 hari. Keluar saat salah satunya berbalik.',
+      },
+      'MTF: Weekly + Daily Supertrend': {
+        tag: 'Multi-timeframe',
+        desc: 'Masuk hanya saat Supertrend mingguan dan harian searah. Keluar begitu salah satunya berbalik arah.',
+      },
       'Ticker: Divergence + BOS': {
         tag: 'Tren + pembalikan',
         desc: 'Ikuti tren besar (EMA 200). Masuk saat momentum (RSI) menandakan koreksi selesai dan harga menembus titik balik terakhir. Sinyal jarang tapi selektif.',
@@ -270,7 +284,8 @@ export const EN_NOTES: Record<string, string> = {
   vwap: 'Rolling N-bar VWAP; a per-session VWAP is meaningless on the daily timeframe.',
   supertrend: 'direction = 1 up, -1 down.',
   ichimoku: 'Span A/B are shifted forward like TradingView; Chikou is left out because it looks ahead.',
-  donchian: 'Includes the current bar, like TradingView. For breakouts compare high/low with upper/lower.',
+  donchian: 'upper/lower include the current bar, like TradingView. upperPrev/lowerPrev = channel of the previous N bars; breakout: close > upperPrev.',
+  price: 'Useful with a higher timeframe, e.g. the weekly close as a trend filter.',
   delta: 'Delta = taker buy − taker sell per bar (from Binance klines). Not order book / tick footprint data.',
   cvdDivergence: 'bull = price makes a new N-bar low but CVD does not; bear is the opposite.',
   sweep: 'bull = wick takes the previous N-bar low and closes back above it (sell-side liquidity sweep). bear is the opposite.',
@@ -378,6 +393,8 @@ const en: Messages = {
     addIndicatorOption: '+ Add indicator…',
     remove: (id) => `Remove ${id}`,
     outputs: 'Outputs',
+    timeframe: 'Data timeframe',
+    tfChart: 'Same as chart',
     rules: 'Rules',
     groups: { entryLong: 'Entry long', exitLong: 'Exit long', entryShort: 'Entry short', exitShort: 'Exit short' },
     logic: 'logic',
@@ -460,6 +477,18 @@ const en: Messages = {
     allowShort: 'Allow profiting when price falls (short)',
     custom: (name) => `Custom setup active: ${name}. Pick a strategy above to go back to a preset.`,
     presets: {
+      'MTF: Weekly Trend + Donchian Breakout': {
+        tag: 'Multi-timeframe',
+        desc: '"Turtle" style: the weekly trend sets the direction (close above the 21-week EMA), then enters when the daily price breaks the 20-day high. Exits on a break of the 10-day low or when the weekly trend turns.',
+      },
+      'MTF: Weekly Momentum + Daily Trend': {
+        tag: 'Multi-timeframe',
+        desc: 'Momentum: follows the direction when price rose over the last 12 weeks and the daily price is above its 50-day average. Exits when either turns.',
+      },
+      'MTF: Weekly + Daily Supertrend': {
+        tag: 'Multi-timeframe',
+        desc: 'Enters only when the weekly and daily Supertrend agree. Exits as soon as either one flips.',
+      },
       'Ticker: Divergence + BOS': {
         tag: 'Trend + reversal',
         desc: 'Follows the big trend (EMA 200). Enters when momentum (RSI) shows the pullback is over and price breaks the last turning point. Few but selective signals.',

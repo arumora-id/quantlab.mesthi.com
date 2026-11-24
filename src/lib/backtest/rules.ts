@@ -1,4 +1,5 @@
 import { INDICATOR_BY_ID, source, type Source } from './catalog'
+import { baseSeconds, mapToBase, resample, TIMEFRAMES, type IndicatorTf } from './timeframe'
 import type { Candle, Position, Strategy } from './types'
 
 /** One configured indicator in a setup, e.g. EMA(200) as "ema1". */
@@ -6,6 +7,8 @@ export interface IndicatorInstance {
   id: string
   defId: string
   params: Record<string, number>
+  /** Compute on a higher timeframe (e.g. weekly trend filter on daily candles). Default: the chart. */
+  tf?: IndicatorTf
 }
 
 export type Operand =
@@ -41,7 +44,8 @@ export function instanceLabel(inst: IndicatorInstance) {
     .filter((p) => p.key !== 'source')
     .map((p) => inst.params[p.key])
     .join(',')
-  return `${def?.name ?? inst.defId}${args ? `(${args})` : ''}`
+  const tf = inst.tf && inst.tf !== 'chart' ? ` [${inst.tf}]` : ''
+  return `${def?.name ?? inst.defId}${args ? `(${args})` : ''}${tf}`
 }
 
 export const emptyGroup = (): RuleGroup => ({ mode: 'all', conditions: [] })
@@ -51,9 +55,19 @@ export type SeriesMap = Record<string, Record<string, number[]>>
 /** Computes every indicator instance once: `out[instanceId][output]`. */
 export function computeIndicators(candles: Candle[], instances: IndicatorInstance[]): SeriesMap {
   const out: SeriesMap = {}
+  const base = baseSeconds(candles)
+  const resampled = new Map<number, ReturnType<typeof resample>>()
   for (const inst of instances) {
     const def = INDICATOR_BY_ID[inst.defId]
-    if (def) out[inst.id] = def.compute(candles, inst.params)
+    if (!def) continue
+    const tfSec = inst.tf && inst.tf !== 'chart' ? TIMEFRAMES[inst.tf] : 0
+    if (tfSec <= base) {
+      out[inst.id] = def.compute(candles, inst.params)
+      continue
+    }
+    if (!resampled.has(tfSec)) resampled.set(tfSec, resample(candles, tfSec))
+    const r = resampled.get(tfSec)!
+    out[inst.id] = mapToBase(def.compute(r.bars, inst.params), r.visible)
   }
   return out
 }

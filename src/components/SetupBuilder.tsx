@@ -9,6 +9,7 @@ import {
 import { instanceLabel, type Condition, type IndicatorInstance, type Operand, type Operator, type RuleGroup, type Setup } from '../lib/backtest/rules'
 import { Icon } from './Icon'
 import { NumberField } from './NumberField'
+import { TIMEFRAMES, type IndicatorTf } from '../lib/backtest/timeframe'
 import { useI18n } from '../i18n/context'
 
 type GroupKey = 'entryLong' | 'exitLong' | 'entryShort' | 'exitShort'
@@ -206,6 +207,12 @@ export function SetupBuilder({ setup, onChange, presets, saved, onSave, onDelete
       indicators: setup.indicators.map((i) => (i.id === id ? { ...i, params: { ...i.params, [key]: v } } : i)),
     })
 
+  const setTf = (id: string, tf: IndicatorTf) =>
+    onChange({
+      ...setup,
+      indicators: setup.indicators.map((i) => (i.id === id ? { ...i, tf } : i)),
+    })
+
   const loadValue = (v: string) => {
     const [kind, idx] = v.split(':')
     const src = kind === 'preset' ? presets[+idx] : saved[+idx]
@@ -285,6 +292,21 @@ export function SetupBuilder({ setup, onChange, presets, saved, onSave, onDelete
                 <Icon name="trash" />
               </button>
             </header>
+            <label className="field">
+              <span>{t.setup.timeframe}</span>
+              <select
+                className="input"
+                value={inst.tf ?? 'chart'}
+                onChange={(e) => setTf(inst.id, e.target.value as IndicatorTf)}
+              >
+                <option value="chart">{t.setup.tfChart}</option>
+                {Object.keys(TIMEFRAMES).map((tf) => (
+                  <option key={tf} value={tf}>
+                    {tf}
+                  </option>
+                ))}
+              </select>
+            </label>
             {def.params.length > 0 && (
               <div className="ind-params">
                 {def.params.map((p) => (
