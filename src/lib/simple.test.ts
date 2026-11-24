@@ -6,9 +6,10 @@ describe('barsFor', () => {
     expect(barsFor('1d', 365)).toBe(365)
     expect(barsFor('4h', 182)).toBe(1092)
   })
-  it('caps at 5000 candles', () => {
-    expect(barsFor('1h', 365)).toBe(5000)
-    expect(isCapped('1h', 365)).toBe(true)
+  it('caps at 50,000 candles', () => {
+    expect(barsFor('1h', 365)).toBe(8760)
+    expect(barsFor('1m', 182)).toBe(50_000)
+    expect(isCapped('1m', 182)).toBe(true)
     expect(isCapped('1d', 1460)).toBe(false)
   })
 })

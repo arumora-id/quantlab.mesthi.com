@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { computeIndicators } from './rules'
 import { syntheticCandles } from './sampleData'
-import { resample, TIMEFRAMES } from './timeframe'
+import { ema } from './indicators'
+import { tickerMtf } from './tickerMtf'
+import { alignHtf, htfContext, resample, TIMEFRAMES } from './timeframe'
 import type { Candle } from './types'
 
 const DAY = 86_400
@@ -64,5 +66,50 @@ describe('higher-timeframe indicators', () => {
     const a = computeIndicators(candles, [{ id: 'x', defId: 'ema', params: { length: 5, source: 0 }, tf: '4h' }])
     const b = computeIndicators(candles, [{ id: 'x', defId: 'ema', params: { length: 5, source: 0 } }])
     expect(a.x.value).toEqual(b.x.value)
+  })
+})
+
+describe('alignHtf (higher-timeframe candles fetched separately)', () => {
+  it('lets the first chart candles use weeks that closed before the chart starts', () => {
+    const all = days(28)
+    const weeks = resample(all, TIMEFRAMES['1w']).bars
+    const { visible } = alignHtf(all.slice(7), weeks, TIMEFRAMES['1w'])
+    expect(visible.slice(0, 6)).toEqual([0, 0, 0, 0, 0, 0]) // week 1 already closed
+    expect(visible[6]).toBe(1) // Sunday of week 2
+    expect(visible[visible.length - 1]).toBe(3)
+  })
+
+  it('never shows a candle that closes after the chart candle', () => {
+    const all = days(28)
+    const weeks = resample(all, TIMEFRAMES['1w']).bars
+    const { visible } = alignHtf(all.slice(0, 10), weeks, TIMEFRAMES['1w'])
+    expect(Math.max(...visible)).toBe(0)
+  })
+})
+
+describe('Ticker MTF signal', () => {
+  const minute = syntheticCandles(30_000, 21).map((c, i) => ({ ...c, time: MONDAY + i * 60 }))
+  const htf = {
+    [TIMEFRAMES['4h']]: resample(minute, TIMEFRAMES['4h']).bars,
+    [TIMEFRAMES['15m']]: resample(minute, TIMEFRAMES['15m']).bars,
+  }
+  const chart = minute.slice(15_000)
+  const params = { trend: 20, rsi: 14, swing: 3, bosSwing: 3, wait: 60, rr: 2 }
+  const signal = tickerMtf(chart, params, htfContext(chart, htf)).signal
+
+  it('does not look ahead even when later higher-timeframe candles are supplied', () => {
+    const prefix = chart.slice(0, 9_000)
+    expect(tickerMtf(prefix, params, htfContext(prefix, htf)).signal).toEqual(signal.slice(0, 9_000))
+  })
+
+  it('only signals in the direction of the 4H bias', () => {
+    const { bars, visible } = htfContext(chart, htf).htf(TIMEFRAMES['4h'])
+    const e = ema(
+      bars.map((b) => b.close),
+      20,
+    )
+    signal.forEach((s, i) => {
+      if (s !== 0 && (s !== signal[i - 1])) expect(Math.sign(bars[visible[i]].close - e[visible[i]])).toBe(s)
+    })
   })
 })

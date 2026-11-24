@@ -1,4 +1,5 @@
 import type { Condition, Operand, Setup } from './rules'
+import { ZARATTINI_LOOKBACKS } from './trendEnsemble'
 
 const close: Operand = { kind: 'price', field: 'close' }
 const num = (value: number): Operand => ({ kind: 'number', value })
@@ -10,8 +11,33 @@ const none = () => all()
 /** Starting points. They are examples to edit and compare, not recommendations. */
 export const PRESETS: Setup[] = [
   {
+    // Zarattini, Pagani & Barbon (2025): nine breakout lookbacks, ratcheting stop, 25% vol target, long only
+    name: 'Trend Ensemble (Zarattini 2025)',
+    research: true,
+    model: { kind: 'trendEnsemble', lookbacks: ZARATTINI_LOOKBACKS, targetVol: 25, volLookback: 90, maxWeight: 1, rebalanceBand: 0.1 },
+    indicators: [],
+    entryLong: none(),
+    exitLong: none(),
+    entryShort: none(),
+    exitShort: none(),
+  },
+  {
+    // control for the weekly filter below: the same breakout without it
+    name: 'Donchian 20/10 Breakout',
+    research: true,
+    indicators: [
+      { id: 'dc20', defId: 'donchian', params: { length: 20 } },
+      { id: 'dc10', defId: 'donchian', params: { length: 10 } },
+    ],
+    entryLong: all({ left: close, op: '>', right: ind('dc20', 'upperPrev') }),
+    exitLong: all({ left: close, op: '<', right: ind('dc10', 'lowerPrev') }),
+    entryShort: all({ left: close, op: '<', right: ind('dc20', 'lowerPrev') }),
+    exitShort: all({ left: close, op: '>', right: ind('dc10', 'upperPrev') }),
+  },
+  {
     // Turtle-style Donchian breakout, traded only in the direction of the weekly trend
     name: 'MTF: Weekly Trend + Donchian Breakout',
+    research: true,
     indicators: [
       { id: 'wk', defId: 'price', params: {}, tf: '1w' },
       { id: 'wema', defId: 'ema', params: { length: 21, source: 0 }, tf: '1w' },
@@ -38,6 +64,7 @@ export const PRESETS: Setup[] = [
   {
     // time-series momentum: 12-week return sets the direction, daily SMA 50 confirms
     name: 'MTF: Weekly Momentum + Daily Trend',
+    research: true,
     indicators: [
       { id: 'wroc', defId: 'roc', params: { length: 12 }, tf: '1w' },
       { id: 'sma', defId: 'sma', params: { length: 50, source: 0 }, tf: '1d' },
@@ -61,6 +88,7 @@ export const PRESETS: Setup[] = [
   },
   {
     name: 'MTF: Weekly + Daily Supertrend',
+    research: true,
     indicators: [
       { id: 'wst', defId: 'supertrend', params: { length: 10, mult: 3 }, tf: '1w' },
       { id: 'dst', defId: 'supertrend', params: { length: 10, mult: 3 }, tf: '1d' },
@@ -81,6 +109,19 @@ export const PRESETS: Setup[] = [
       { left: ind('wst', 'direction'), op: '>', right: num(0) },
       { left: ind('dst', 'direction'), op: '>', right: num(0) },
     ),
+  },
+  {
+    // Ticker's skill on its real timeframes; the exit is a QuantLab addition (see tickerMtf.ts)
+    name: 'Ticker Scalping: 4H + 15M + 1M',
+    research: true,
+    preferredInterval: '1m',
+    indicators: [
+      { id: 'tkm', defId: 'tickerMtf', params: { trend: 200, rsi: 14, swing: 3, bosSwing: 3, wait: 60, rr: 2 } },
+    ],
+    entryLong: all({ left: ind('tkm', 'signal'), op: '>', right: num(0) }),
+    exitLong: all({ left: ind('tkm', 'signal'), op: '<', right: num(1) }),
+    entryShort: all({ left: ind('tkm', 'signal'), op: '<', right: num(0) }),
+    exitShort: all({ left: ind('tkm', 'signal'), op: '>', right: num(-1) }),
   },
   {
     name: 'Ticker: Divergence + BOS',

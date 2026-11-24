@@ -107,6 +107,12 @@ const id = {
     outputs: 'Output',
     timeframe: 'Timeframe data',
     tfChart: 'Sama dengan chart',
+    model: 'Model bawaan',
+    modelLookbacks: 'Lookback breakout (bar)',
+    targetVol: 'Target volatilitas (%/tahun)',
+    volLookback: 'Periode volatilitas (bar)',
+    maxWeight: 'Bobot maksimum (1 = tanpa leverage)',
+    rebalanceBand: 'Rebalance jika bobot berubah >',
     rules: 'Aturan',
     groups: { entryLong: 'Entry long', exitLong: 'Exit long', entryShort: 'Entry short', exitShort: 'Exit short' },
     logic: 'logika',
@@ -177,18 +183,34 @@ const id = {
     step2: '2. Pilih strategi',
     step3: '3. Modal & risiko',
     candle: 'Satu candle =',
-    timeframes: { '1d': '1 hari', '4h': '4 jam', '1h': '1 jam' } as Record<string, string>,
+    timeframes: { '1d': '1 hari', '4h': '4 jam', '1h': '1 jam', '15m': '15 menit', '1m': '1 menit' } as Record<string, string>,
     period: 'Periode uji',
     periods: { 182: '6 bulan', 365: '1 tahun', 730: '2 tahun', 1460: '4 tahun' } as Record<number, string>,
-    capped: 'Dibatasi 5.000 candle terakhir.',
+    capped: 'Dibatasi 50.000 candle terakhir.',
     capital: 'Modal awal (USDT)',
     leverage: 'Leverage',
     leverageWarn: (x: number) => `Leverage ${x}x: untung dan rugi dikali ${x}. Posisi bisa habis (likuidasi) jika harga bergerak ${(100 / x).toFixed(0)}% melawanmu.`,
     stopLoss: 'Batas rugi per trade (stop loss)',
     off: 'Tidak',
     allowShort: 'Boleh ambil untung saat harga turun (short)',
+    research: 'Riset',
+    researchHint: 'Bukti untuk aturan persis ini masih lemah atau sedang diuji. Jangan anggap sudah terbukti.',
+    modelNote: (vol: number) =>
+      `Model ini mengatur ukuran posisinya sendiri (target volatilitas ${vol}% per tahun, tanpa leverage, hanya beli), jadi leverage, stop loss, dan short tidak dipakai.`,
     custom: (name: string) => `Setup kustom aktif: ${name}. Pilih strategi di atas untuk kembali ke preset.`,
     presets: {
+      'Ticker Scalping: 4H + 15M + 1M': {
+        tag: 'Scalping',
+        desc: 'Metode Ticker di tiga timeframe: arah dari tren 4 jam (EMA 200), tunggu divergence RSI di 15 menit, lalu masuk saat candle 1 menit menembus swing terakhir. Exit tambahan QuantLab: stop di titik divergence, target 2x risiko. Otomatis memakai candle 1 menit (sekitar 35 hari data).',
+      },
+      'Trend Ensemble (Zarattini 2025)': {
+        tag: 'Ukuran posisi dinamis',
+        desc: 'Sembilan model breakout (5 sampai 360 hari) digabung. Tiap model beli saat harga mencetak penutupan tertinggi, lalu keluar lewat stop yang hanya naik. Besar posisi otomatis mengecil saat pasar bergejolak. Hanya beli.',
+      },
+      'Donchian 20/10 Breakout': {
+        tag: 'Pembanding',
+        desc: 'Breakout klasik tanpa filter: beli saat close menembus tertinggi 20 hari, keluar saat menembus terendah 10 hari. Dipakai sebagai pembanding untuk versi dengan filter mingguan.',
+      },
       'MTF: Weekly Trend + Donchian Breakout': {
         tag: 'Multi-timeframe',
         desc: 'Gaya "Turtle": arah ditentukan tren mingguan (close di atas EMA 21 minggu), lalu masuk saat harga harian menembus titik tertinggi 20 hari. Keluar saat menembus titik terendah 10 hari atau tren mingguan berbalik.',
@@ -278,6 +300,9 @@ export const EN_PARAM_LABELS: Record<string, string> = {
   Faktor: 'Factor',
   'Lebar swing': 'Swing width',
   'Tunggu BOS (bar)': 'BOS wait (bars)',
+  'Lebar swing 15M': 'Swing width 15M',
+  'Lebar swing chart': 'Swing width (chart)',
+  'Target (x risiko)': 'Target (x risk)',
 }
 
 export const EN_NOTES: Record<string, string> = {
@@ -290,6 +315,8 @@ export const EN_NOTES: Record<string, string> = {
   cvdDivergence: 'bull = price makes a new N-bar low but CVD does not; bear is the opposite.',
   sweep: 'bull = wick takes the previous N-bar low and closes back above it (sell-side liquidity sweep). bear is the opposite.',
   fvg: 'bull = this bar’s low > the high two bars back; bear = high < the low two bars back.',
+  tickerMtf:
+    'Ticker’s original method on three timeframes. Use a 1m chart. The exit (stop at the divergence pivot, R target, or bias flip) is a QuantLab addition, not part of Ticker’s method.',
   tickerDivergence: 'signal 1 long, -1 short, 0 flat. Single-timeframe adaptation of the Ticker agent’s 4H/15M/1M method.',
 }
 
@@ -395,6 +422,12 @@ const en: Messages = {
     outputs: 'Outputs',
     timeframe: 'Data timeframe',
     tfChart: 'Same as chart',
+    model: 'Built-in model',
+    modelLookbacks: 'Breakout lookbacks (bars)',
+    targetVol: 'Target volatility (%/year)',
+    volLookback: 'Volatility window (bars)',
+    maxWeight: 'Max weight (1 = no leverage)',
+    rebalanceBand: 'Rebalance when weight changes >',
     rules: 'Rules',
     groups: { entryLong: 'Entry long', exitLong: 'Exit long', entryShort: 'Entry short', exitShort: 'Exit short' },
     logic: 'logic',
@@ -465,18 +498,34 @@ const en: Messages = {
     step2: '2. Choose a strategy',
     step3: '3. Capital & risk',
     candle: 'One candle =',
-    timeframes: { '1d': '1 day', '4h': '4 hours', '1h': '1 hour' },
+    timeframes: { '1d': '1 day', '4h': '4 hours', '1h': '1 hour', '15m': '15 min', '1m': '1 min' },
     period: 'Test period',
     periods: { 182: '6 months', 365: '1 year', 730: '2 years', 1460: '4 years' },
-    capped: 'Limited to the last 5,000 candles.',
+    capped: 'Limited to the last 50,000 candles.',
     capital: 'Starting capital (USDT)',
     leverage: 'Leverage',
     leverageWarn: (x) => `Leverage ${x}x: profits and losses are multiplied by ${x}. A position can be wiped out (liquidated) if price moves ${(100 / x).toFixed(0)}% against you.`,
     stopLoss: 'Max loss per trade (stop loss)',
     off: 'Off',
     allowShort: 'Allow profiting when price falls (short)',
+    research: 'Research',
+    researchHint: 'Evidence for these exact rules is weak or still being tested. Do not treat it as proven.',
+    modelNote: (vol) =>
+      `This model sizes its own position (target volatility ${vol}% per year, no leverage, long only), so leverage, stop loss and shorts do not apply.`,
     custom: (name) => `Custom setup active: ${name}. Pick a strategy above to go back to a preset.`,
     presets: {
+      'Ticker Scalping: 4H + 15M + 1M': {
+        tag: 'Scalping',
+        desc: 'Ticker’s method on three timeframes: direction from the 4-hour trend (EMA 200), wait for an RSI divergence on 15 minutes, then enter when a 1-minute candle breaks the last swing. QuantLab exit: stop at the divergence point, target 2x the risk. Switches to 1-minute candles (about 35 days of data).',
+      },
+      'Trend Ensemble (Zarattini 2025)': {
+        tag: 'Dynamic sizing',
+        desc: 'Nine breakout models (5 to 360 days) combined. Each buys on a new closing high and exits on a stop that only rises. Position size shrinks automatically when the market gets volatile. Long only.',
+      },
+      'Donchian 20/10 Breakout': {
+        tag: 'Control',
+        desc: 'Classic breakout without filters: buy when the close breaks the 20-day high, exit on a break of the 10-day low. Used as the control for the weekly-filter version.',
+      },
       'MTF: Weekly Trend + Donchian Breakout': {
         tag: 'Multi-timeframe',
         desc: '"Turtle" style: the weekly trend sets the direction (close above the 21-week EMA), then enters when the daily price breaks the 20-day high. Exits on a break of the 10-day low or when the weekly trend turns.',

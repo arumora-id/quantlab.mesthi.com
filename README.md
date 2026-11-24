@@ -43,6 +43,11 @@ Aktifkan proxy di nginx dengan `deploy/nginx-binance-proxy.conf` (petunjuk ada d
 - **Multi-timeframe**: setiap indikator bisa dihitung di timeframe lebih besar (4h/12h/1d/1w). Candle besar dibentuk dari data yang dimuat,
   dan sebuah bar hanya membaca candle besar yang **sudah tutup** (`src/lib/backtest/timeframe.ts`), jadi tanpa look-ahead.
   Preset MTF: Weekly Trend + Donchian Breakout, Weekly Momentum + Daily Trend, Weekly + Daily Supertrend.
+- **Model Trend Ensemble (Zarattini, Pagani & Barbon 2025)**: 9 model breakout (5–360 hari), stop yang hanya naik,
+  ukuran posisi menyesuaikan target volatilitas 25%/tahun, hanya long (`trendEnsemble.ts`, engine bobot `exposureEngine.ts`).
+- **Scalping Ticker 4H + 15M + 1M**: metode asli agent Ticker di tiga timeframe (`tickerMtf.ts`); exit adalah tambahan QuantLab.
+  Candle 4 jam/15 menit/mingguan diambil langsung dari Binance dengan riwayat pemanasan, lalu diselaraskan tanpa look-ahead.
+- **Label "Riset"**: preset yang bukti untuk aturan persisnya masih lemah.
 - **Rule builder** (`src/lib/backtest/rules.ts`): gabungkan beberapa indikator dengan kondisi `>`, `<`, cross ↑, cross ↓,
   logika AND/OR, untuk entry/exit long dan short. Setup bisa disimpan per user.
 - **Engine** (`src/lib/backtest/engine.ts`): sinyal diputuskan di close, dieksekusi di open bar berikutnya (tanpa look-ahead);

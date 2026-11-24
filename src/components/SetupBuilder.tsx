@@ -263,6 +263,39 @@ export function SetupBuilder({ setup, onChange, presets, saved, onSave, onDelete
         </button>
       </div>
 
+      {setup.model ? (
+        <div className="ind-item">
+          <header>
+            <strong>{t.setup.model}</strong>
+          </header>
+          <p className="ind-note">
+            {t.setup.modelLookbacks}: {setup.model.lookbacks.join(', ')}
+          </p>
+          <div className="ind-params">
+            {(
+              [
+                ['targetVol', 5, 100, 1],
+                ['volLookback', 10, 365, 1],
+                ['maxWeight', 0.1, 5, 0.1],
+                ['rebalanceBand', 0, 1, 0.05],
+              ] as const
+            ).map(([key, min, max, step]) => (
+              <label className="field" key={key}>
+                <span>{t.setup[key]}</span>
+                <NumberField
+                  min={min}
+                  max={max}
+                  step={step}
+                  value={setup.model![key]}
+                  onChange={(v) => onChange({ ...setup, model: { ...setup.model!, [key]: v } })}
+                />
+              </label>
+            ))}
+          </div>
+          <p className="ind-note">{t.simple.modelNote(setup.model.targetVol)}</p>
+        </div>
+      ) : (
+        <>
       <div className="panel-head">
         <h2>{t.setup.indicators(setup.indicators.length)}</h2>
       </div>
@@ -357,6 +390,8 @@ export function SetupBuilder({ setup, onChange, presets, saved, onSave, onDelete
           onChange={(group) => onChange({ ...setup, [key]: group })}
         />
       ))}
+        </>
+      )}
     </section>
   )
 }

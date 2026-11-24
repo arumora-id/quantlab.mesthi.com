@@ -9,7 +9,7 @@ import { NumberField } from './NumberField'
 import { PairPicker } from './PairPicker'
 import { usePerpetualSymbols } from './usePerpetualSymbols'
 
-const TIMEFRAMES: Interval[] = ['1d', '4h', '1h']
+const TIMEFRAMES: Interval[] = ['1d', '4h', '1h', '15m', '1m']
 const PERIOD_DAYS = [182, 365, 730, 1460]
 const LEVERAGES = [1, 2, 3, 5, 10]
 const STOPS = [0, 3, 5, 10]
@@ -122,11 +122,21 @@ export function SimpleSidebar({
                 role="radio"
                 aria-checked={p.name === setup.name}
                 className="strategy-card"
-                onClick={() => onPreset(p)}
+                onClick={() => {
+                  onPreset(p)
+                  if (p.preferredInterval && p.preferredInterval !== interval) setData({ interval: p.preferredInterval })
+                }}
               >
                 <span className="strategy-head">
                   <strong>{p.name}</strong>
-                  {info && <span className="badge">{info.tag}</span>}
+                  <span className="badges">
+                    {p.research && (
+                      <span className="badge research" title={t.simple.researchHint}>
+                        {t.simple.research}
+                      </span>
+                    )}
+                    {info && <span className="badge">{info.tag}</span>}
+                  </span>
                 </span>
                 {info && <span className="strategy-desc">{info.desc}</span>}
               </button>
@@ -150,6 +160,12 @@ export function SimpleSidebar({
             onChange={(initialCapital) => onConfig({ ...config, initialCapital })}
           />
         </label>
+        {setup.model ? (
+          <p className="alert info" style={{ margin: 0 }}>
+            {t.simple.modelNote(setup.model.targetVol)}
+          </p>
+        ) : (
+          <>
         <div className="field">
           <span>{t.simple.leverage}</span>
           <Chips
@@ -179,6 +195,8 @@ export function SimpleSidebar({
           />
           {t.simple.allowShort}
         </label>
+          </>
+        )}
       </section>
     </>
   )

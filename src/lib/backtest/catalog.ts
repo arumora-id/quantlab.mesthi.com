@@ -11,6 +11,9 @@ import {
   sum,
   wma,
 } from './indicators'
+import { pivotConfirmed } from './pivots'
+import { tickerMtf } from './tickerMtf'
+import type { HigherTf, HtfContext } from './timeframe'
 import type { Candle, ParamDef } from './types'
 
 type Series = number[]
@@ -39,7 +42,9 @@ export interface IndicatorDef {
   note?: string
   /** Outputs have unrelated scales: chart each output in its own pane. */
   separatePanes?: boolean
-  compute: (candles: Candle[], p: Record<string, number>) => Outputs
+  /** Higher timeframes this indicator reads itself (loaded from Binance when the chart is smaller). */
+  needsTf?: HigherTf[]
+  compute: (candles: Candle[], p: Record<string, number>, ctx?: HtfContext) => Outputs
 }
 
 export const SOURCES = ['close', 'open', 'high', 'low', 'hl2', 'hlc3', 'ohlc4'] as const
@@ -192,17 +197,6 @@ function stochK(c: Candle[], n: number, src: Series = closes(c), hi = highs(c), 
   return src.map((v, i) => (hh[i] === ll[i] ? 50 : (100 * (v - ll[i])) / (hh[i] - ll[i])))
 }
 
-function pivotConfirmed(c: Candle[], j: number, k: number, dir: 'low' | 'high') {
-  const v = dir === 'low' ? c[j].low : c[j].high
-  for (let m = j - k; m <= j + k; m++) {
-    if (m === j) continue
-    const o = dir === 'low' ? c[m].low : c[m].high
-    // strict on the left, non-strict on the right: a flat extreme pivots on its first bar
-    const beats = dir === 'low' ? (m < j ? v < o : v <= o) : m < j ? v > o : v >= o
-    if (!beats) return false
-  }
-  return true
-}
 
 /**
  * Single-timeframe adaptation of Ticker's "Analisis divergence multitimeframe" skill
@@ -632,6 +626,21 @@ export const INDICATORS: IndicatorDef[] = [
     outputs: ['signal'],
     note: 'signal 1 long, -1 short, 0 flat. Adaptasi satu timeframe dari metode 4H/15M/1M agent Ticker.',
     compute: tickerDivergence,
+  },
+  {
+    id: 'tickerMtf', name: 'Ticker MTF: 4H Bias + 15M Divergence + 1M BOS', category: 'Sinyal', placement: 'markers',
+    params: [
+      p('trend', 'EMA bias 4H', 200, 5, 400),
+      p('rsi', 'RSI 15M', 14, 2, 50),
+      p('swing', 'Lebar swing 15M', 3, 1, 10),
+      p('bosSwing', 'Lebar swing chart', 3, 1, 20),
+      p('wait', 'Tunggu BOS (bar)', 60, 1, 1000),
+      p('rr', 'Target (x risiko)', 2, 0.5, 10, 0.5),
+    ],
+    outputs: ['signal'],
+    needsTf: ['4h', '15m'],
+    note: 'Metode asli Ticker di tiga timeframe. Pakai chart 1m. Exit (stop di pivot divergence, target R, atau bias berbalik) tambahan QuantLab, bukan bagian metode Ticker.',
+    compute: tickerMtf,
   },
 ]
 

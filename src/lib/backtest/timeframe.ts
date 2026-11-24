@@ -1,7 +1,16 @@
 import type { Candle } from './types'
 
 /** Timeframes an indicator can be computed on, in seconds. 'chart' = the loaded candles. */
-export const TIMEFRAMES = { '1h': 3_600, '4h': 14_400, '12h': 43_200, '1d': 86_400, '1w': 604_800 } as const
+export const TIMEFRAMES = {
+  '5m': 300,
+  '15m': 900,
+  '30m': 1_800,
+  '1h': 3_600,
+  '4h': 14_400,
+  '12h': 43_200,
+  '1d': 86_400,
+  '1w': 604_800,
+} as const
 export type HigherTf = keyof typeof TIMEFRAMES
 export type IndicatorTf = 'chart' | HigherTf
 
@@ -68,4 +77,46 @@ export function mapToBase(series: Record<string, number[]>, visible: number[]): 
   return Object.fromEntries(
     Object.entries(series).map(([k, v]) => [k, visible.map((idx) => (idx < 0 ? NaN : v[idx]))]),
   )
+}
+
+/** Higher-timeframe candles fetched separately (keyed by timeframe seconds), so long warm-ups start before the chart. */
+export type HtfData = Record<number, Candle[]>
+
+export const tfName = (seconds: number) =>
+  (Object.entries(TIMEFRAMES).find(([, s]) => s === seconds)?.[0] ?? null) as HigherTf | null
+
+/**
+ * Aligns separately fetched higher-timeframe candles with the chart: each chart candle sees the
+ * latest higher-timeframe candle whose close is at or before its own close.
+ */
+export function alignHtf(base: Candle[], htf: Candle[], tfSeconds: number): Resampled {
+  const step = baseSeconds(base)
+  const visible = new Array<number>(base.length).fill(-1)
+  let j = -1
+  for (let i = 0; i < base.length; i++) {
+    const end = base[i].time + step
+    while (j + 1 < htf.length && htf[j + 1].time + tfSeconds <= end) j++
+    visible[i] = j
+  }
+  return { bars: htf, visible }
+}
+
+export interface HtfContext {
+  /** Higher-timeframe view of the chart: fetched candles when available, else resampled from the chart. */
+  htf: (tfSeconds: number) => Resampled
+}
+
+export function htfContext(base: Candle[], data?: HtfData): HtfContext {
+  const cache = new Map<number, Resampled>()
+  return {
+    htf(tfSeconds) {
+      let r = cache.get(tfSeconds)
+      if (!r) {
+        const fetched = data?.[tfSeconds]
+        r = fetched?.length ? alignHtf(base, fetched, tfSeconds) : resample(base, tfSeconds)
+        cache.set(tfSeconds, r)
+      }
+      return r
+    },
+  }
 }

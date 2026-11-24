@@ -107,7 +107,7 @@ describe('no look-ahead', () => {
   )
 
   it('the Ticker preset produces trades on a long synthetic series', () => {
-    const t = setupToStrategy(PRESETS[0]).targets(candles, {})
+    const t = setupToStrategy(PRESETS.find((p) => p.name.startsWith('Ticker'))!).targets(candles, {})
     expect(t.some((x) => x !== 0)).toBe(true)
   })
 })
