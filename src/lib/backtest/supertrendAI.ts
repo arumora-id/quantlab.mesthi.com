@@ -4,7 +4,9 @@ import type { Candle } from './types'
 /**
  * SuperTrend AI (Clustering) — concept by LuxAlgo (https://www.tradingview.com/script/wP7WWjLL/, CC BY-NC-SA 4.0,
  * https://www.luxalgo.com/library/license/). Written for QuantLab from the formulas summarised by the Methoda
- * research agent, not translated from the original code. Non-commercial use only under that license.
+ * research agent, not translated from the original code. As an adaptation, this file is licensed under
+ * CC BY-NC-SA 4.0 (https://creativecommons.org/licenses/by-nc-sa/4.0/): attribution to LuxAlgo, non-commercial
+ * use only, and adaptations must keep the same license.
  *
  * Per bar: run one SuperTrend per factor (min..max by step); score each with an exponentially smoothed
  * "return in the direction of the line"; cluster the scores with 1-D K-means (K = 3, initial centroids at the
