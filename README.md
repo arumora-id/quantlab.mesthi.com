@@ -15,8 +15,17 @@ npm run build      # output di dist/
 
 Routing memakai `BrowserRouter`: hosting statis perlu fallback SPA (semua path → `index.html`).
 
+### Proxy data Binance (disarankan)
+
+Sebagian jaringan memblokir `fapi.binance.com`, sehingga browser menampilkan "Failed to fetch".
+Aplikasi mencoba proxy di domain sendiri (`/api/binance/...`) lebih dulu, lalu otomatis jatuh ke Binance langsung.
+Aktifkan proxy di nginx dengan `deploy/nginx-binance-proxy.conf` (petunjuk ada di file itu). Saat `npm run dev`, Vite sudah mem-proxy route yang sama.
+
 ## Fitur tahap awal
 
+- **Mode Sederhana / Lanjutan**: mode Sederhana (default) untuk orang awam: 3 langkah (koin, strategi, modal & risiko),
+  strategi dijelaskan dengan bahasa sehari-hari, hasil berupa kalimat ringkasan + 4 angka yang dijelaskan.
+  Mode Lanjutan berisi rule builder, semua indikator, dan pengaturan lengkap.
 - **Auth lokal** (`src/lib/auth/localAuth.ts`): akun disimpan di localStorage browser, password di-hash PBKDF2-SHA256.
   Ini bukan autentikasi server; ganti dengan backend sebelum dipakai publik.
 - **Dua bahasa (ID/EN)**: tombol ID | EN di halaman login dan workspace; pilihan disimpan di browser.
