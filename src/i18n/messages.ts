@@ -64,6 +64,10 @@ const id = {
     disclaimer:
       'Hasil backtest adalah simulasi historis, bukan saran investasi. Sinyal diputuskan saat close dan dieksekusi di open bar berikutnya.',
   },
+  theme: {
+    toLight: 'Ganti ke tema terang',
+    toDark: 'Ganti ke tema gelap',
+  },
   status: {
     dataStart: 'Memuat data Binance…',
     data: (n: string, total: string) => `Memuat data Binance… ${n} / ${total} candle`,
@@ -429,6 +433,10 @@ const en: Messages = {
     loadedInfo: (symbol, interval, bars, from, to) => `${symbol} ${interval} · ${bars} bars · ${from} → ${to}`,
     disclaimer:
       'Backtest results are historical simulations, not investment advice. Signals are decided at the close and filled at the next bar’s open.',
+  },
+  theme: {
+    toLight: 'Switch to light theme',
+    toDark: 'Switch to dark theme',
   },
   status: {
     dataStart: 'Loading Binance data…',

@@ -5,6 +5,7 @@ import { ComparePanel } from '../components/ComparePanel'
 import { DataPanel, type DataRequest } from '../components/DataPanel'
 import { Icon } from '../components/Icon'
 import { LangSwitch } from '../components/LangSwitch'
+import { ThemeToggle } from '../components/ThemeToggle'
 import { MetricsGrid, TradesTable } from '../components/Results'
 import { RiskPanel } from '../components/RiskPanel'
 import { SetupBuilder } from '../components/SetupBuilder'
@@ -176,6 +177,7 @@ export default function Workspace() {
           ))}
         </div>
         <LangSwitch />
+        <ThemeToggle />
         <span className="muted" style={{ fontSize: 13 }}>
           {user!.name}
         </span>
@@ -266,11 +268,11 @@ export default function Workspace() {
                   <h2 id="eq-title">{mode === 'simple' ? t.simple.equityTitle : t.ws.equityTitle}</h2>
                   <div className="legend">
                     <span>
-                      <i style={{ background: '#22c55e' }} />
+                      <i style={{ background: 'var(--color-up)' }} />
                       {t.ws.strategy}
                     </span>
                     <span>
-                      <i style={{ background: '#64748b' }} />
+                      <i style={{ background: 'var(--chart-bench)' }} />
                       {t.ws.buyHold}
                     </span>
                   </div>

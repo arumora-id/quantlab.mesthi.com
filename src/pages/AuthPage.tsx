@@ -8,6 +8,7 @@ import { Icon } from '../components/Icon'
 import { AuthError, type AuthErrorCode } from '../lib/auth/localAuth'
 import { INDICATORS } from '../lib/backtest/catalog'
 import { LangSwitch } from '../components/LangSwitch'
+import { ThemeToggle } from '../components/ThemeToggle'
 import { useI18n } from '../i18n/context'
 
 gsap.registerPlugin(useGSAP)
@@ -160,37 +161,38 @@ export default function AuthPage({ mode }: { mode: Mode }) {
           QuantLab
           <span className="spacer" />
           <LangSwitch />
+          <ThemeToggle />
         </div>
 
         <svg className="market" viewBox="0 0 1000 400" preserveAspectRatio="none" aria-hidden="true">
           <defs>
             <linearGradient id="scanGrad" x1="0" x2="1">
-              <stop offset="0" stopColor="#22c55e" stopOpacity="0" />
-              <stop offset="1" stopColor="#22c55e" stopOpacity="0.25" />
+              <stop offset="0" style={{ stopColor: 'var(--color-up)' }} stopOpacity="0" />
+              <stop offset="1" style={{ stopColor: 'var(--color-up)' }} stopOpacity="0.25" />
             </linearGradient>
           </defs>
           {[80, 160, 240, 320].map((gy) => (
-            <line key={gy} x1="0" x2="1000" y1={gy} y2={gy} stroke="#1e293b" strokeDasharray="4 6" />
+            <line key={gy} x1="0" x2="1000" y1={gy} y2={gy} style={{ stroke: 'var(--hero-grid)' }} strokeDasharray="4 6" />
           ))}
           {candles.map((c) => {
             const up = c.close >= c.open
             const x = c.i * step + step / 2
             return (
               <g key={c.i} className={`candle${c.i === candles.length - 1 ? ' live' : ''}`}>
-                <line x1={x} x2={x} y1={y(c.high)} y2={y(c.low)} stroke={up ? '#22c55e' : '#ef4444'} strokeWidth="2" />
+                <line x1={x} x2={x} y1={y(c.high)} y2={y(c.low)} style={{ stroke: up ? 'var(--color-up)' : 'var(--color-down)' }} strokeWidth="2" />
                 <rect
                   x={x - step * 0.3}
                   width={step * 0.6}
                   y={y(Math.max(c.open, c.close))}
                   height={Math.max(2, Math.abs(y(c.open) - y(c.close)))}
                   rx="2"
-                  fill={up ? '#22c55e' : '#ef4444'}
+                  style={{ fill: up ? 'var(--color-up)' : 'var(--color-down)' }}
                   opacity="0.85"
                 />
               </g>
             )
           })}
-          <polyline className="equity-line" points={linePoints} fill="none" stroke="#38bdf8" strokeWidth="2.5" />
+          <polyline className="equity-line" points={linePoints} fill="none" style={{ stroke: 'var(--color-info)' }} strokeWidth="2.5" />
           <rect className="scan" x="-120" y="0" width="120" height="400" fill="url(#scanGrad)" />
         </svg>
 
