@@ -43,7 +43,21 @@ export default function Workspace() {
   const { user, logout } = useAuth()
   const { t } = useI18n()
   const email = user!.email
-  const [view, setView] = useState<View>('backtest')
+  const [view, setViewState] = useState<View>('backtest')
+  const mainRef = useRef<HTMLElement>(null)
+  const viewChanged = useRef(false)
+  /** Switch tab and bring its content into view: on narrow screens the results sit below the long settings column. */
+  const setView = (v: View) => {
+    viewChanged.current = true
+    setViewState(v)
+  }
+  useEffect(() => {
+    if (!viewChanged.current || !mainRef.current) return
+    viewChanged.current = false
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    mainRef.current.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' })
+    mainRef.current.focus({ preventScroll: true })
+  }, [view])
   const [mode, setModeState] = useState<Mode>(() => (localStorage.getItem(MODE_KEY) === 'pro' ? 'pro' : 'simple'))
   const setMode = (m: Mode) => {
     localStorage.setItem(MODE_KEY, m)
@@ -161,10 +175,10 @@ export default function Workspace() {
           QuantLab
         </div>
         <nav aria-label={t.ws.viewLabel}>
-          <button type="button" className="btn btn-sm btn-ghost" aria-pressed={view === 'backtest'} onClick={() => setView('backtest')}>
+          <button type="button" className="btn btn-sm btn-ghost" aria-pressed={view === 'backtest'} title={t.ws.backtestHint} onClick={() => setView('backtest')}>
             {t.ws.backtest}
           </button>
-          <button type="button" className="btn btn-sm btn-ghost" aria-pressed={view === 'compare'} onClick={() => setView('compare')}>
+          <button type="button" className="btn btn-sm btn-ghost" aria-pressed={view === 'compare'} title={t.ws.compareHint} onClick={() => setView('compare')}>
             {t.ws.compare}
           </button>
         </nav>
@@ -220,7 +234,7 @@ export default function Workspace() {
           )}
         </aside>
 
-        <main className="main">
+        <main className="main" ref={mainRef} tabIndex={-1} aria-label={view === 'compare' ? t.compare.title : t.ws.backtest}>
           {errorText && (
             <div className="alert error error-row" role="alert">
               <span>{errorText}</span>

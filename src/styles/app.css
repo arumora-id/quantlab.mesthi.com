@@ -1095,3 +1095,12 @@ body {
     background var(--dur),
     color var(--dur);
 }
+
+/* tab switches scroll the results into view below the sticky top bar */
+.main {
+  scroll-margin-top: 64px;
+}
+
+.main:focus {
+  outline: none;
+}
