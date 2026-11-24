@@ -1,9 +1,10 @@
-import { useEffect, useId, useState } from 'react'
+import { useId } from 'react'
 import { useI18n } from '../i18n/context'
-import { fetchUsdtPerpetuals, INTERVALS, type Interval } from '../lib/backtest/binanceFutures'
+import { INTERVALS, type Interval } from '../lib/backtest/binanceFutures'
 import { Icon } from './Icon'
 import { NumberField } from './NumberField'
 import { PairPicker } from './PairPicker'
+import { usePerpetualSymbols } from './usePerpetualSymbols'
 
 export interface DataRequest {
   symbol: string
@@ -22,18 +23,8 @@ interface Props {
 
 export function DataPanel({ value, onChange, onLoad, loading, loadedInfo }: Props) {
   const { t } = useI18n()
-  const [symbols, setSymbols] = useState<string[] | null>(null)
+  const symbols = usePerpetualSymbols()
   const pairLabel = useId()
-
-  useEffect(() => {
-    const ctrl = new AbortController()
-    fetchUsdtPerpetuals(ctrl.signal)
-      .then(setSymbols)
-      .catch(() => {
-        if (!ctrl.signal.aborted) setSymbols([])
-      })
-    return () => ctrl.abort()
-  }, [])
 
   const apply = (next: DataRequest) => {
     onChange(next)

@@ -24,4 +24,7 @@ export const date = (unixSeconds: number, locale = 'id-ID') =>
     timeZone: 'UTC',
   }) + ' UTC'
 
+export const day = (unixSeconds: number, locale = 'id-ID') =>
+  new Date(unixSeconds * 1000).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' })
+
 export const tone = (v: number) => (v > 0 ? 'up' : v < 0 ? 'down' : '')

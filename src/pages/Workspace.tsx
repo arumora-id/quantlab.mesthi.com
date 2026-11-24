@@ -8,7 +8,10 @@ import { LangSwitch } from '../components/LangSwitch'
 import { MetricsGrid, TradesTable } from '../components/Results'
 import { RiskPanel } from '../components/RiskPanel'
 import { SetupBuilder } from '../components/SetupBuilder'
-import { fetchFuturesKlines } from '../lib/backtest/binanceFutures'
+import { SimpleSidebar } from '../components/SimpleSidebar'
+import { barsFor } from '../lib/simple'
+import { SimpleSummary } from '../components/SimpleSummary'
+import { BinanceUnreachableError, fetchFuturesKlines } from '../lib/backtest/binanceFutures'
 import { runBacktest } from '../lib/backtest/engine'
 import { PRESETS } from '../lib/backtest/presets'
 import { computeIndicators, setupToStrategy, type Setup } from '../lib/backtest/rules'
@@ -28,19 +31,28 @@ const DEFAULT_CONFIG: BacktestConfig = {
 }
 
 type View = 'backtest' | 'compare'
+type Mode = 'simple' | 'pro'
+const MODE_KEY = 'quantlab.mode'
+const DEFAULT_DAYS = 1460
 
 export default function Workspace() {
   const { user, logout } = useAuth()
   const { t } = useI18n()
   const email = user!.email
   const [view, setView] = useState<View>('backtest')
-  const [request, setRequest] = useState<DataRequest>({ symbol: 'BTCUSDT', interval: '1d', bars: 1500 })
+  const [mode, setModeState] = useState<Mode>(() => (localStorage.getItem(MODE_KEY) === 'pro' ? 'pro' : 'simple'))
+  const setMode = (m: Mode) => {
+    localStorage.setItem(MODE_KEY, m)
+    setModeState(m)
+  }
+  const [periodDays, setPeriodDays] = useState(DEFAULT_DAYS)
+  const [request, setRequest] = useState<DataRequest>({ symbol: 'BTCUSDT', interval: '1d', bars: barsFor('1d', DEFAULT_DAYS) })
   const [candles, setCandles] = useState<Candle[]>([])
   const [loaded, setLoaded] = useState<DataRequest | null>(null)
   const [loading, setLoading] = useState(false)
   /** Either a message from Binance, or a translatable local error. */
   const [error, setError] = useState<
-    { kind: 'raw'; message: string } | { kind: 'tooFew'; n: number; req: DataRequest } | { kind: 'failed' } | null
+    { kind: 'raw'; message: string } | { kind: 'tooFew'; n: number; req: DataRequest } | { kind: 'failed' } | { kind: 'unreachable' } | null
   >(null)
   const [setup, setSetup] = useState<Setup>(() => structuredClone(PRESETS[0]))
   const [saved, setSaved] = useState<Setup[]>(() => loadSetups(email))
@@ -64,7 +76,9 @@ export default function Workspace() {
       setCandles(data)
       setLoaded(req)
     } catch (e) {
-      if (!ctrl.signal.aborted) setError(e instanceof Error ? { kind: 'raw', message: e.message } : { kind: 'failed' })
+      if (ctrl.signal.aborted) return
+      if (e instanceof BinanceUnreachableError) setError({ kind: 'unreachable' })
+      else setError(e instanceof Error ? { kind: 'raw', message: e.message } : { kind: 'failed' })
     } finally {
       if (!ctrl.signal.aborted) setLoading(false)
     }
@@ -106,7 +120,9 @@ export default function Workspace() {
   const errorText =
     error?.kind === 'raw'
       ? error.message
-      : error?.kind === 'tooFew'
+      : error?.kind === 'unreachable'
+        ? t.ws.unreachable
+        : error?.kind === 'tooFew'
         ? t.ws.tooFewBars(error.n, error.req.symbol, error.req.interval)
         : error
           ? t.ws.loadFailed
@@ -130,6 +146,13 @@ export default function Workspace() {
           </button>
         </nav>
         <span className="spacer" />
+        <div className="segmented mode-switch" role="group" aria-label={t.simple.modeLabel}>
+          {(['simple', 'pro'] as const).map((m) => (
+            <button key={m} type="button" aria-pressed={mode === m} onClick={() => setMode(m)}>
+              {t.simple[m]}
+            </button>
+          ))}
+        </div>
         <LangSwitch />
         <span className="muted" style={{ fontSize: 13 }}>
           {user!.name}
@@ -141,6 +164,24 @@ export default function Workspace() {
 
       <div className="ws-body">
         <aside className="sidebar" aria-label={t.ws.settingsLabel}>
+          {mode === 'simple' ? (
+            <SimpleSidebar
+              request={request}
+              periodDays={periodDays}
+              onData={(req, days) => {
+                setRequest(req)
+                setPeriodDays(days)
+                load(req)
+              }}
+              loadedInfo={loadedInfo}
+              setup={setup}
+              presets={PRESETS}
+              onPreset={(p) => setSetup(structuredClone(p))}
+              config={config}
+              onConfig={setConfig}
+            />
+          ) : (
+            <>
           <DataPanel value={request} onChange={setRequest} onLoad={load} loading={loading} loadedInfo={loadedInfo} />
           <SetupBuilder
             setup={setup}
@@ -151,12 +192,17 @@ export default function Workspace() {
             onDelete={(name) => setSaved(deleteSetup(email, name))}
           />
           <RiskPanel value={config} onChange={setConfig} oosPct={oosPct} onOosChange={setOosPct} />
+            </>
+          )}
         </aside>
 
         <main className="main">
           {errorText && (
-            <div className="alert error" role="alert">
-              {errorText}
+            <div className="alert error error-row" role="alert">
+              <span>{errorText}</span>
+              <button type="button" className="btn btn-sm" onClick={() => load(request)} disabled={loading}>
+                <Icon name="refresh" /> {t.ws.retry}
+              </button>
             </div>
           )}
           {!computed && !errorText && (
@@ -169,7 +215,11 @@ export default function Workspace() {
           {computed && view === 'backtest' && (
             <>
               {!hasEntries && <div className="alert info">{t.ws.noEntries}</div>}
-              <MetricsGrid m={computed.result.metrics} oos={computed.oos} oosPct={oosPct} />
+              {mode === 'simple' ? (
+                <SimpleSummary result={computed.result} oos={computed.oos} oosPct={oosPct} capital={dConfig.initialCapital} />
+              ) : (
+                <MetricsGrid m={computed.result.metrics} oos={computed.oos} oosPct={oosPct} />
+              )}
               <section className="card chart-card" aria-labelledby="price-title">
                 <div className="panel-head">
                   <h2 id="price-title">
@@ -184,6 +234,7 @@ export default function Workspace() {
                     </span>
                   ))}
                 </div>
+                <small className="muted">{t.simple.markers}</small>
                 <PriceChart
                   candles={candles}
                   instances={dSetup.indicators}
@@ -194,7 +245,7 @@ export default function Workspace() {
               </section>
               <section className="card chart-card" aria-labelledby="eq-title">
                 <div className="panel-head">
-                  <h2 id="eq-title">{t.ws.equityTitle}</h2>
+                  <h2 id="eq-title">{mode === 'simple' ? t.simple.equityTitle : t.ws.equityTitle}</h2>
                   <div className="legend">
                     <span>
                       <i style={{ background: '#22c55e' }} />
@@ -212,7 +263,14 @@ export default function Workspace() {
                 <div className="panel-head">
                   <h2 id="tr-title">{t.ws.tradesTitle(computed.result.trades.length)}</h2>
                 </div>
-                <TradesTable trades={computed.result.trades} />
+                {mode === 'simple' ? (
+                  <details>
+                    <summary className="btn btn-sm btn-ghost">{t.simple.showTrades(computed.result.trades.length)}</summary>
+                    <TradesTable trades={computed.result.trades} />
+                  </details>
+                ) : (
+                  <TradesTable trades={computed.result.trades} />
+                )}
               </section>
             </>
           )}
