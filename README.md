@@ -19,7 +19,10 @@ Routing memakai `BrowserRouter`: hosting statis perlu fallback SPA (semua path �
 
 - **Auth lokal** (`src/lib/auth/localAuth.ts`): akun disimpan di localStorage browser, password di-hash PBKDF2-SHA256.
   Ini bukan autentikasi server; ganti dengan backend sebelum dipakai publik.
-- **Data**: kline publik `fapi.binance.com` (tanpa API key), semua pair USDT perpetual, timeframe 15m–1d, hanya candle yang sudah close.
+- **Dua bahasa (ID/EN)**: tombol ID | EN di halaman login dan workspace; pilihan disimpan di browser.
+  Teks ada di `src/i18n/messages.ts` (kamus EN wajib punya kunci yang sama dengan ID; tes memastikan label dan catatan indikator baru ikut diterjemahkan).
+- **Data**: kline publik `fapi.binance.com` (tanpa API key). Pair dipilih dari dropdown semua USDT perpetual (populer di atas, bisa difilter);
+  memilih pair atau timeframe langsung memuat data. Timeframe 15m–1d, hanya candle yang sudah close.
 - **Indikator** (`src/lib/backtest/catalog.ts`, 39 indikator): MA (SMA/EMA/WMA/Hull/DEMA/TEMA/VWMA/VWAP), Supertrend, PSAR,
   Ichimoku, ADX/DMI, Aroon, RSI, Stochastic, Stoch RSI, MACD, CCI, Williams %R, ROC, Momentum, AO, TSI, MFI,
   Bollinger, Keltner, Donchian, ATR, StdDev, Volume, RVOL, OBV, A/D, CMF.

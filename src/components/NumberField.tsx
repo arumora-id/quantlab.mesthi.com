@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useI18n } from '../i18n/context'
 
 interface Props {
   value: number
@@ -14,6 +15,7 @@ interface Props {
  * so typing "100" into a min-5 field is not clamped at the first keystroke.
  */
 export function NumberField({ value, onChange, min, max, step, label }: Props) {
+  const { t } = useI18n()
   const [draft, setDraft] = useState<string | null>(null)
   const valid = (n: number) => Number.isFinite(n) && n >= min && n <= max
   const invalid = draft !== null && !valid(Number(draft))
@@ -28,7 +30,7 @@ export function NumberField({ value, onChange, min, max, step, label }: Props) {
       step={step}
       value={draft ?? value}
       aria-invalid={invalid || undefined}
-      title={invalid ? `Nilai ${min}–${max}` : undefined}
+      title={invalid ? t.common.invalidRange(min, max) : undefined}
       onChange={(e) => {
         setDraft(e.target.value)
         const n = Number(e.target.value)

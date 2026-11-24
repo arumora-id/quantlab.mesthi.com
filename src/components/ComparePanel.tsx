@@ -3,10 +3,11 @@ import { runBacktest } from '../lib/backtest/engine'
 import { setupToStrategy, type Setup } from '../lib/backtest/rules'
 import type { BacktestConfig, Candle, Metrics } from '../lib/backtest/types'
 import { fixed, pct, plainPct, tone } from '../lib/format'
+import { useI18n } from '../i18n/context'
 
 interface Row {
   setup: Setup
-  source: 'Preset' | 'Tersimpan'
+  source: 'preset' | 'saved'
   full: Metrics
   oos: Metrics | null
 }
@@ -32,12 +33,13 @@ interface Props {
 }
 
 export function ComparePanel({ candles, config, oosStart, presets, saved, onLoad }: Props) {
+  const { t } = useI18n()
   const [sort, setSort] = useState<SortKey>('oos')
 
   const rows = useMemo<Row[]>(() => {
     const all = [
-      ...presets.map((s) => ({ setup: s, source: 'Preset' as const })),
-      ...saved.map((s) => ({ setup: s, source: 'Tersimpan' as const })),
+      ...presets.map((s) => ({ setup: s, source: 'preset' as const })),
+      ...saved.map((s) => ({ setup: s, source: 'saved' as const })),
     ]
     return all.map(({ setup, source }) => {
       const strat = setupToStrategy(setup)
@@ -63,26 +65,25 @@ export function ComparePanel({ candles, config, oosStart, presets, saved, onLoad
   return (
     <section className="card chart-card" aria-labelledby="cmp-title">
       <div className="panel-head">
-        <h2 id="cmp-title">Bandingkan setup pada data ini</h2>
+        <h2 id="cmp-title">{t.compare.title}</h2>
       </div>
       <p className="alert info" style={{ margin: 0 }}>
-        Setup terbaik di data historis belum tentu profitable ke depan. Pilih berdasarkan hasil out-of-sample, jumlah trade
-        yang cukup, dan drawdown — bukan hanya total return.
+        {t.compare.warning}
       </p>
       <div className="table-wrap">
         <table>
           <thead>
             <tr>
-              <th scope="col">Setup</th>
-              {head('total', 'Return')}
-              {oosStart !== null && head('oos', 'OOS return')}
-              {head('sharpe', 'Sharpe')}
-              {head('dd', 'Max DD')}
-              {head('pf', 'Profit factor')}
-              {head('win', 'Win rate')}
-              <th scope="col">Trades</th>
+              <th scope="col">{t.compare.setup}</th>
+              {head('total', t.compare.ret)}
+              {oosStart !== null && head('oos', t.compare.oos)}
+              {head('sharpe', t.compare.sharpe)}
+              {head('dd', t.compare.dd)}
+              {head('pf', t.compare.pf)}
+              {head('win', t.compare.win)}
+              <th scope="col">{t.compare.trades}</th>
               <th scope="col">
-                <span className="sr-only">Aksi</span>
+                <span className="sr-only">{t.compare.actions}</span>
               </th>
             </tr>
           </thead>
@@ -90,7 +91,7 @@ export function ComparePanel({ candles, config, oosStart, presets, saved, onLoad
             {sorted.map((r) => (
               <tr key={`${r.source}:${r.setup.name}`}>
                 <td>
-                  {r.setup.name} <span className="badge">{r.source}</span>
+                  {r.setup.name} <span className="badge">{t.compare[r.source]}</span>
                 </td>
                 <td className={`num ${tone(r.full.totalReturn)}`}>{pct(r.full.totalReturn)}</td>
                 {oosStart !== null && <td className={`num ${tone(r.oos!.totalReturn)}`}>{pct(r.oos!.totalReturn)}</td>}
@@ -101,7 +102,7 @@ export function ComparePanel({ candles, config, oosStart, presets, saved, onLoad
                 <td className="num">{r.full.trades}</td>
                 <td>
                   <button type="button" className="btn btn-sm" onClick={() => onLoad(r.setup)}>
-                    Buka
+                    {t.compare.open}
                   </button>
                 </td>
               </tr>

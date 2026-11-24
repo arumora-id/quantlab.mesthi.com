@@ -12,6 +12,7 @@ import {
   type UTCTimestamp,
 } from 'lightweight-charts'
 import { useEffect, useRef } from 'react'
+import { useI18n } from '../i18n/context'
 import { INDICATOR_BY_ID } from '../lib/backtest/catalog'
 import { instanceLabel, type IndicatorInstance, type SeriesMap } from '../lib/backtest/rules'
 import type { Candle, EquityPoint, Trade } from '../lib/backtest/types'
@@ -51,6 +52,7 @@ interface PriceChartProps {
 }
 
 export function PriceChart({ candles, instances, series, trades, onLegend }: PriceChartProps) {
+  const { t: tr } = useI18n()
   const ref = useRef<HTMLDivElement>(null)
   const paneCount = instances.reduce((n, i) => {
     const def = INDICATOR_BY_ID[i.defId]
@@ -140,10 +142,11 @@ export function PriceChart({ candles, instances, series, trades, onLegend }: Pri
     return () => chart.remove()
   }, [candles, instances, series, trades, onLegend])
 
-  return <div ref={ref} className="chart-box" style={{ height }} role="img" aria-label="Chart harga dengan indikator dan trade" />
+  return <div ref={ref} className="chart-box" style={{ height }} role="img" aria-label={tr.chart.price} />
 }
 
 export function EquityChart({ equity }: { equity: EquityPoint[] }) {
+  const { t: tr } = useI18n()
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!ref.current || !equity.length) return
@@ -155,5 +158,5 @@ export function EquityChart({ equity }: { equity: EquityPoint[] }) {
     chart.timeScale().fitContent()
     return () => chart.remove()
   }, [equity])
-  return <div ref={ref} className="chart-box" style={{ height: 240 }} role="img" aria-label="Kurva equity strategi dibanding buy and hold" />
+  return <div ref={ref} className="chart-box" style={{ height: 240 }} role="img" aria-label={tr.chart.equity} />
 }

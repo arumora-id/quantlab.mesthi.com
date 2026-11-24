@@ -4,6 +4,7 @@ import { EquityChart, PriceChart, type LegendItem } from '../components/charts'
 import { ComparePanel } from '../components/ComparePanel'
 import { DataPanel, type DataRequest } from '../components/DataPanel'
 import { Icon } from '../components/Icon'
+import { LangSwitch } from '../components/LangSwitch'
 import { MetricsGrid, TradesTable } from '../components/Results'
 import { RiskPanel } from '../components/RiskPanel'
 import { SetupBuilder } from '../components/SetupBuilder'
@@ -14,6 +15,7 @@ import { computeIndicators, setupToStrategy, type Setup } from '../lib/backtest/
 import type { BacktestConfig, Candle } from '../lib/backtest/types'
 import { date } from '../lib/format'
 import { deleteSetup, loadSetups, saveSetup } from '../lib/setupsStore'
+import { useI18n } from '../i18n/context'
 
 const DEFAULT_CONFIG: BacktestConfig = {
   initialCapital: 10_000,
@@ -29,13 +31,17 @@ type View = 'backtest' | 'compare'
 
 export default function Workspace() {
   const { user, logout } = useAuth()
+  const { t } = useI18n()
   const email = user!.email
   const [view, setView] = useState<View>('backtest')
   const [request, setRequest] = useState<DataRequest>({ symbol: 'BTCUSDT', interval: '1d', bars: 1500 })
   const [candles, setCandles] = useState<Candle[]>([])
   const [loaded, setLoaded] = useState<DataRequest | null>(null)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  /** Either a message from Binance, or a translatable local error. */
+  const [error, setError] = useState<
+    { kind: 'raw'; message: string } | { kind: 'tooFew'; n: number; req: DataRequest } | { kind: 'failed' } | null
+  >(null)
   const [setup, setSetup] = useState<Setup>(() => structuredClone(PRESETS[0]))
   const [saved, setSaved] = useState<Setup[]>(() => loadSetups(email))
   const [config, setConfig] = useState<BacktestConfig>(DEFAULT_CONFIG)
@@ -51,11 +57,14 @@ export default function Workspace() {
     setError(null)
     try {
       const data = await fetchFuturesKlines(req.symbol, req.interval, req.bars, ctrl.signal)
-      if (data.length < 50) throw new Error(`Hanya ${data.length} bar tersedia untuk ${req.symbol} ${req.interval}.`)
+      if (data.length < 50) {
+        setError({ kind: 'tooFew', n: data.length, req })
+        return
+      }
       setCandles(data)
       setLoaded(req)
     } catch (e) {
-      if (!ctrl.signal.aborted) setError(e instanceof Error ? e.message : 'Gagal memuat data.')
+      if (!ctrl.signal.aborted) setError(e instanceof Error ? { kind: 'raw', message: e.message } : { kind: 'failed' })
     } finally {
       if (!ctrl.signal.aborted) setLoading(false)
     }
@@ -86,8 +95,22 @@ export default function Workspace() {
   const hasEntries = setup.entryLong.conditions.length + setup.entryShort.conditions.length > 0
   const loadedInfo =
     loaded && candles.length
-      ? `${loaded.symbol} ${loaded.interval} · ${candles.length} bar · ${date(candles[0].time)} → ${date(candles[candles.length - 1].time)}`
+      ? t.ws.loadedInfo(
+          loaded.symbol,
+          loaded.interval,
+          candles.length,
+          date(candles[0].time, t.locale),
+          date(candles[candles.length - 1].time, t.locale),
+        )
       : null
+  const errorText =
+    error?.kind === 'raw'
+      ? error.message
+      : error?.kind === 'tooFew'
+        ? t.ws.tooFewBars(error.n, error.req.symbol, error.req.interval)
+        : error
+          ? t.ws.loadFailed
+          : null
 
   return (
     <div className="ws">
@@ -98,26 +121,27 @@ export default function Workspace() {
           </span>
           QuantLab
         </div>
-        <nav aria-label="Tampilan">
+        <nav aria-label={t.ws.viewLabel}>
           <button type="button" className="btn btn-sm btn-ghost" aria-pressed={view === 'backtest'} onClick={() => setView('backtest')}>
-            Backtest
+            {t.ws.backtest}
           </button>
           <button type="button" className="btn btn-sm btn-ghost" aria-pressed={view === 'compare'} onClick={() => setView('compare')}>
-            Bandingkan
+            {t.ws.compare}
           </button>
         </nav>
         <span className="spacer" />
+        <LangSwitch />
         <span className="muted" style={{ fontSize: 13 }}>
           {user!.name}
         </span>
         <button type="button" className="btn btn-sm btn-ghost" onClick={logout}>
-          <Icon name="logout" /> Keluar
+          <Icon name="logout" /> {t.ws.logout}
         </button>
       </header>
 
       <div className="ws-body">
-        <aside className="sidebar" aria-label="Pengaturan backtest">
-          <DataPanel value={request} onChange={setRequest} onLoad={() => load(request)} loading={loading} loadedInfo={loadedInfo} />
+        <aside className="sidebar" aria-label={t.ws.settingsLabel}>
+          <DataPanel value={request} onChange={setRequest} onLoad={load} loading={loading} loadedInfo={loadedInfo} />
           <SetupBuilder
             setup={setup}
             onChange={setSetup}
@@ -130,21 +154,21 @@ export default function Workspace() {
         </aside>
 
         <main className="main">
-          {error && (
+          {errorText && (
             <div className="alert error" role="alert">
-              {error}
+              {errorText}
             </div>
           )}
-          {!computed && !error && (
+          {!computed && !errorText && (
             <div className="card empty">
               <span className="spinner" aria-hidden="true" />
-              Memuat data Binance Futures…
+              {t.ws.loadingData}
             </div>
           )}
 
           {computed && view === 'backtest' && (
             <>
-              {!hasEntries && <div className="alert info">Setup ini belum punya kondisi entry. Tambahkan di panel Aturan.</div>}
+              {!hasEntries && <div className="alert info">{t.ws.noEntries}</div>}
               <MetricsGrid m={computed.result.metrics} oos={computed.oos} oosPct={oosPct} />
               <section className="card chart-card" aria-labelledby="price-title">
                 <div className="panel-head">
@@ -152,7 +176,7 @@ export default function Workspace() {
                     {loaded?.symbol} · {loaded?.interval} — {dSetup.name}
                   </h2>
                 </div>
-                <div className="legend" aria-label="Legenda">
+                <div className="legend" aria-label={t.ws.legend}>
                   {legend.map((l) => (
                     <span key={l.label}>
                       <i style={{ background: l.color }} />
@@ -170,15 +194,15 @@ export default function Workspace() {
               </section>
               <section className="card chart-card" aria-labelledby="eq-title">
                 <div className="panel-head">
-                  <h2 id="eq-title">Equity vs buy & hold</h2>
+                  <h2 id="eq-title">{t.ws.equityTitle}</h2>
                   <div className="legend">
                     <span>
                       <i style={{ background: '#22c55e' }} />
-                      Strategi
+                      {t.ws.strategy}
                     </span>
                     <span>
                       <i style={{ background: '#64748b' }} />
-                      Buy & hold
+                      {t.ws.buyHold}
                     </span>
                   </div>
                 </div>
@@ -186,7 +210,7 @@ export default function Workspace() {
               </section>
               <section className="card chart-card" aria-labelledby="tr-title">
                 <div className="panel-head">
-                  <h2 id="tr-title">Daftar trade ({computed.result.trades.length})</h2>
+                  <h2 id="tr-title">{t.ws.tradesTitle(computed.result.trades.length)}</h2>
                 </div>
                 <TradesTable trades={computed.result.trades} />
               </section>
@@ -207,8 +231,7 @@ export default function Workspace() {
             />
           )}
           <p className="muted" style={{ fontSize: 12, margin: 0 }}>
-            Hasil backtest adalah simulasi historis, bukan saran investasi. Sinyal diputuskan saat close dan dieksekusi di
-            open bar berikutnya.
+            {t.ws.disclaimer}
           </p>
         </main>
       </div>

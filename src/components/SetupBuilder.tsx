@@ -9,15 +9,11 @@ import {
 import { instanceLabel, type Condition, type IndicatorInstance, type Operand, type Operator, type RuleGroup, type Setup } from '../lib/backtest/rules'
 import { Icon } from './Icon'
 import { NumberField } from './NumberField'
+import { useI18n } from '../i18n/context'
 
 type GroupKey = 'entryLong' | 'exitLong' | 'entryShort' | 'exitShort'
 
-const GROUPS: { key: GroupKey; label: string }[] = [
-  { key: 'entryLong', label: 'Entry long' },
-  { key: 'exitLong', label: 'Exit long' },
-  { key: 'entryShort', label: 'Entry short' },
-  { key: 'exitShort', label: 'Exit short' },
-]
+const GROUP_KEYS: GroupKey[] = ['entryLong', 'exitLong', 'entryShort', 'exitShort']
 
 const OPERATORS: { value: Operator; label: string }[] = [
   { value: '>', label: '>' },
@@ -53,10 +49,11 @@ function OperandPicker({
   instances: IndicatorInstance[]
   label: string
 }) {
+  const { t } = useI18n()
   return (
     <div className="cond-row">
       <select className="input" aria-label={label} value={encode(value)} onChange={(e) => onChange(decode(e.target.value, value))}>
-        <optgroup label="Harga">
+        <optgroup label={t.setup.price}>
           {PRICE_FIELDS.map((f) => (
             <option key={f} value={`price:${f}`}>
               {f}
@@ -72,14 +69,14 @@ function OperandPicker({
             ))}
           </optgroup>
         ))}
-        <option value="num">angka…</option>
+        <option value="num">{t.setup.number}</option>
       </select>
       {value.kind === 'number' && (
         <input
           className="input num"
           type="number"
           step="any"
-          aria-label={`${label}: angka`}
+          aria-label={`${label}: ${t.setup.numberLabel}`}
           value={value.value}
           onChange={(e) => onChange({ kind: 'number', value: Number(e.target.value) })}
         />
@@ -99,6 +96,7 @@ function GroupEditor({
   onChange: (g: RuleGroup) => void
   instances: IndicatorInstance[]
 }) {
+  const { t } = useI18n()
   const update = (i: number, c: Condition) =>
     onChange({ ...group, conditions: group.conditions.map((x, j) => (j === i ? c : x)) })
   const firstOutput: Operand = instances[0]
@@ -109,7 +107,7 @@ function GroupEditor({
     <div className="rule-group">
       <header>
         <h3>{label}</h3>
-        <div className="segmented" role="group" aria-label={`${label}: logika`}>
+        <div className="segmented" role="group" aria-label={`${label}: ${t.setup.logic}`}>
           {(['all', 'any'] as const).map((m) => (
             <button key={m} type="button" aria-pressed={group.mode === m} onClick={() => onChange({ ...group, mode: m })}>
               {m === 'all' ? 'AND' : 'OR'}
@@ -119,7 +117,7 @@ function GroupEditor({
       </header>
       {group.conditions.map((c, i) => (
         <div className="cond" key={i}>
-          <OperandPicker label={`${label} ${i + 1} kiri`} value={c.left} instances={instances} onChange={(left) => update(i, { ...c, left })} />
+          <OperandPicker label={`${label} ${i + 1} ${t.setup.left}`} value={c.left} instances={instances} onChange={(left) => update(i, { ...c, left })} />
           <div className="cond-row">
             <select
               className="input"
@@ -136,13 +134,13 @@ function GroupEditor({
             <button
               type="button"
               className="btn btn-ghost btn-icon"
-              aria-label={`Hapus kondisi ${i + 1} ${label}`}
+              aria-label={t.setup.removeCondition(i + 1, label)}
               onClick={() => onChange({ ...group, conditions: group.conditions.filter((_, j) => j !== i) })}
             >
               <Icon name="trash" />
             </button>
           </div>
-          <OperandPicker label={`${label} ${i + 1} kanan`} value={c.right} instances={instances} onChange={(right) => update(i, { ...c, right })} />
+          <OperandPicker label={`${label} ${i + 1} ${t.setup.right}`} value={c.right} instances={instances} onChange={(right) => update(i, { ...c, right })} />
         </div>
       ))}
       <button
@@ -155,7 +153,7 @@ function GroupEditor({
           })
         }
       >
-        <Icon name="plus" /> Kondisi
+        <Icon name="plus" /> {t.setup.addCondition}
       </button>
     </div>
   )
@@ -171,6 +169,7 @@ interface Props {
 }
 
 export function SetupBuilder({ setup, onChange, presets, saved, onSave, onDelete }: Props) {
+  const { t } = useI18n()
   const byCategory = useMemo(() => {
     const m = new Map<IndicatorCategory, typeof INDICATORS>()
     for (const d of INDICATORS) m.set(d.category, [...(m.get(d.category) ?? []), d])
@@ -218,15 +217,15 @@ export function SetupBuilder({ setup, onChange, presets, saved, onSave, onDelete
   return (
     <section className="card panel" aria-labelledby="setup-title">
       <div className="panel-head">
-        <h2 id="setup-title">Setup strategi</h2>
+        <h2 id="setup-title">{t.setup.title}</h2>
       </div>
       <label className="field">
-        <span>Muat preset / setup tersimpan</span>
+        <span>{t.setup.load}</span>
         <select className="input" value="" onChange={(e) => loadValue(e.target.value)}>
           <option value="" disabled>
-            Pilih…
+            {t.setup.choose}
           </option>
-          <optgroup label="Preset">
+          <optgroup label={t.setup.presets}>
             {presets.map((p, i) => (
               <option key={p.name} value={`preset:${i}`}>
                 {p.name}
@@ -234,7 +233,7 @@ export function SetupBuilder({ setup, onChange, presets, saved, onSave, onDelete
             ))}
           </optgroup>
           {saved.length > 0 && (
-            <optgroup label="Tersimpan">
+            <optgroup label={t.setup.saved}>
               {saved.map((p, i) => (
                 <option key={p.name} value={`saved:${i}`}>
                   {p.name}
@@ -245,27 +244,27 @@ export function SetupBuilder({ setup, onChange, presets, saved, onSave, onDelete
         </select>
       </label>
       <label className="field">
-        <span>Nama setup</span>
+        <span>{t.setup.name}</span>
         <input className="input" value={setup.name} onChange={(e) => onChange({ ...setup, name: e.target.value })} />
       </label>
       <div className="grid-2">
         <button type="button" className="btn btn-sm" onClick={onSave} disabled={!setup.name.trim()}>
-          <Icon name="save" /> {isSaved ? 'Perbarui' : 'Simpan'}
+          <Icon name="save" /> {isSaved ? t.setup.update : t.setup.save}
         </button>
         <button type="button" className="btn btn-sm btn-ghost" onClick={() => onDelete(setup.name)} disabled={!isSaved}>
-          <Icon name="trash" /> Hapus simpanan
+          <Icon name="trash" /> {t.setup.deleteSaved}
         </button>
       </div>
 
       <div className="panel-head">
-        <h2>Indikator ({setup.indicators.length})</h2>
+        <h2>{t.setup.indicators(setup.indicators.length)}</h2>
       </div>
-      <select className="input" aria-label="Tambah indikator" value="" onChange={(e) => addIndicator(e.target.value)}>
+      <select className="input" aria-label={t.setup.addIndicator} value="" onChange={(e) => addIndicator(e.target.value)}>
         <option value="" disabled>
-          + Tambah indikator…
+          {t.setup.addIndicatorOption}
         </option>
         {byCategory.map(([cat, defs]) => (
-          <optgroup key={cat} label={cat}>
+          <optgroup key={cat} label={t.catalog.category(cat)}>
             {defs.map((d) => (
               <option key={d.id} value={d.id}>
                 {d.name}
@@ -282,7 +281,7 @@ export function SetupBuilder({ setup, onChange, presets, saved, onSave, onDelete
             <header>
               <span className="tag">{inst.id}</span>
               <strong>{def.name}</strong>
-              <button type="button" className="btn btn-ghost btn-icon" aria-label={`Hapus ${inst.id}`} onClick={() => removeIndicator(inst.id)}>
+              <button type="button" className="btn btn-ghost btn-icon" aria-label={t.setup.remove(inst.id)} onClick={() => removeIndicator(inst.id)}>
                 <Icon name="trash" />
               </button>
             </header>
@@ -290,7 +289,7 @@ export function SetupBuilder({ setup, onChange, presets, saved, onSave, onDelete
               <div className="ind-params">
                 {def.params.map((p) => (
                   <label className="field" key={p.key}>
-                    <span>{p.label}</span>
+                    <span>{t.catalog.param(p.label)}</span>
                     {p.key === 'source' ? (
                       <select
                         className="input"
@@ -317,23 +316,23 @@ export function SetupBuilder({ setup, onChange, presets, saved, onSave, onDelete
               </div>
             )}
             <p className="ind-note">
-              Output: {def.outputs.join(', ')}
-              {def.note ? ` — ${def.note}` : ''}
+              {t.setup.outputs}: {def.outputs.join(', ')}
+              {def.note ? ` — ${t.catalog.note(def.id, def.note)}` : ''}
             </p>
           </div>
         )
       })}
 
       <div className="panel-head">
-        <h2>Aturan</h2>
+        <h2>{t.setup.rules}</h2>
       </div>
-      {GROUPS.map((g) => (
+      {GROUP_KEYS.map((key) => (
         <GroupEditor
-          key={g.key}
-          label={g.label}
-          group={setup[g.key]}
+          key={key}
+          label={t.setup.groups[key]}
+          group={setup[key]}
           instances={setup.indicators}
-          onChange={(group) => onChange({ ...setup, [g.key]: group })}
+          onChange={(group) => onChange({ ...setup, [key]: group })}
         />
       ))}
     </section>

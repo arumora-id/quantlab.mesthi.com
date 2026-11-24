@@ -1,6 +1,7 @@
 import { lazy, Suspense, type ReactNode } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './auth/context'
+import { useI18n } from './i18n/context'
 import AuthPage from './pages/AuthPage'
 
 // charts and the backtest engine load only after sign-in
@@ -9,6 +10,11 @@ const Workspace = lazy(() => import('./pages/Workspace'))
 function RequireUser({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   return user ? children : <Navigate to="/login" replace />
+}
+
+function WorkspaceFallback() {
+  const { t } = useI18n()
+  return <div className="empty">{t.common.loadingWorkspace}</div>
 }
 
 function GuestOnly({ children }: { children: ReactNode }) {
@@ -25,7 +31,7 @@ export default function App() {
         path="/app"
         element={
           <RequireUser>
-            <Suspense fallback={<div className="empty">Memuat workspace…</div>}>
+            <Suspense fallback={<WorkspaceFallback />}>
               <Workspace />
             </Suspense>
           </RequireUser>

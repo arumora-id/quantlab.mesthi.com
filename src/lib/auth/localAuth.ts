@@ -24,10 +24,15 @@ const USERS_KEY = 'quantlab.users'
 const SESSION_KEY = 'quantlab.session'
 const ITERATIONS = 150_000
 
+export type AuthErrorCode = 'nameRequired' | 'emailInvalid' | 'passwordShort' | 'emailTaken' | 'badCredentials'
+
+/** `code` is translated by the UI; `field` says which input to mark. */
 export class AuthError extends Error {
-  readonly field?: 'name' | 'email' | 'password'
-  constructor(message: string, field?: 'name' | 'email' | 'password') {
-    super(message)
+  readonly code: AuthErrorCode
+  readonly field: 'name' | 'email' | 'password'
+  constructor(code: AuthErrorCode, field: 'name' | 'email' | 'password') {
+    super(code)
+    this.code = code
     this.field = field
   }
 }
@@ -64,12 +69,12 @@ export function createLocalAuth(store: KeyValueStore) {
     async register(name: string, email: string, password: string): Promise<User> {
       const cleanName = name.trim()
       const cleanEmail = normalizeEmail(email)
-      if (!cleanName) throw new AuthError('Nama wajib diisi.', 'name')
-      if (!EMAIL_RE.test(cleanEmail)) throw new AuthError('Format email tidak valid.', 'email')
-      if (password.length < 8) throw new AuthError('Password minimal 8 karakter.', 'password')
+      if (!cleanName) throw new AuthError('nameRequired', 'name')
+      if (!EMAIL_RE.test(cleanEmail)) throw new AuthError('emailInvalid', 'email')
+      if (password.length < 8) throw new AuthError('passwordShort', 'password')
       const users = readUsers()
       if (users.some((u) => u.email === cleanEmail))
-        throw new AuthError('Email sudah terdaftar. Silakan login.', 'email')
+        throw new AuthError('emailTaken', 'email')
       const salt = toHex(crypto.getRandomValues(new Uint8Array(16)))
       const hash = await hashPassword(password, salt)
       store.setItem(USERS_KEY, JSON.stringify([...users, { name: cleanName, email: cleanEmail, salt, hash }]))
@@ -81,7 +86,7 @@ export function createLocalAuth(store: KeyValueStore) {
       const cleanEmail = normalizeEmail(email)
       const user = readUsers().find((u) => u.email === cleanEmail)
       // same message for unknown email and wrong password
-      const fail = new AuthError('Email atau password salah.', 'password')
+      const fail = new AuthError('badCredentials', 'password')
       if (!user) throw fail
       if ((await hashPassword(password, user.salt)) !== user.hash) throw fail
       store.setItem(SESSION_KEY, cleanEmail)

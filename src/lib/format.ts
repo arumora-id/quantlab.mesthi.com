@@ -6,16 +6,16 @@ export const plainPct = (v: number, digits = 1) => (Number.isFinite(v) ? `${(v *
 export const fixed = (v: number, digits = 2) =>
   v === Infinity ? '∞' : Number.isFinite(v) ? v.toFixed(digits) : '—'
 
-export const money = (v: number) =>
-  Number.isFinite(v) ? v.toLocaleString('id-ID', { maximumFractionDigits: 2, minimumFractionDigits: 2 }) : '—'
+export const money = (v: number, locale = 'id-ID') =>
+  Number.isFinite(v) ? v.toLocaleString(locale, { maximumFractionDigits: 2, minimumFractionDigits: 2 }) : '—'
 
 export const price = (v: number) =>
   Number.isFinite(v)
     ? v.toLocaleString('en-US', { maximumSignificantDigits: v >= 1 ? 8 : 5, useGrouping: false })
     : '—'
 
-export const date = (unixSeconds: number) =>
-  new Date(unixSeconds * 1000).toLocaleString('id-ID', {
+export const date = (unixSeconds: number, locale = 'id-ID') =>
+  new Date(unixSeconds * 1000).toLocaleString(locale, {
     year: 'numeric',
     month: 'short',
     day: '2-digit',

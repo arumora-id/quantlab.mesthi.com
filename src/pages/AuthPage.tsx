@@ -5,13 +5,17 @@ import { useId, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/context'
 import { Icon } from '../components/Icon'
-import { AuthError } from '../lib/auth/localAuth'
+import { AuthError, type AuthErrorCode } from '../lib/auth/localAuth'
 import { INDICATORS } from '../lib/backtest/catalog'
+import { LangSwitch } from '../components/LangSwitch'
+import { useI18n } from '../i18n/context'
 
 gsap.registerPlugin(useGSAP)
 
 type Mode = 'login' | 'register'
-type FieldErrors = Partial<Record<'name' | 'email' | 'password' | 'form', string>>
+type Field = 'name' | 'email' | 'password'
+/** Errors are kept as codes and translated at render, so switching language updates them. */
+type FormError = { field: Field; code: AuthErrorCode } | { field: 'form'; message: string } | null
 
 /** Decorative candles for the hero (deterministic so the layout never jumps). */
 function useHeroCandles(count = 32) {
@@ -37,7 +41,8 @@ export default function AuthPage({ mode }: { mode: Mode }) {
   const navigate = useNavigate()
   const root = useRef<HTMLDivElement>(null)
   const card = useRef<HTMLDivElement>(null)
-  const [errors, setErrors] = useState<FieldErrors>({})
+  const { t } = useI18n()
+  const [formError, setFormError] = useState<FormError>(null)
   const [busy, setBusy] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const ids = { name: useId(), email: useId(), password: useId() }
@@ -118,22 +123,31 @@ export default function AuthPage({ mode }: { mode: Mode }) {
     const data = new FormData(e.currentTarget)
     const email = String(data.get('email') ?? '')
     const password = String(data.get('password') ?? '')
-    setErrors({})
+    setFormError(null)
     setBusy(true)
     try {
       if (isRegister) await register(String(data.get('name') ?? ''), email, password)
       else await login(email, password)
       navigate('/app', { replace: true })
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Terjadi kesalahan.'
-      setErrors(err instanceof AuthError && err.field ? { [err.field]: msg } : { form: msg })
+      setFormError(
+        err instanceof AuthError
+          ? { field: err.field, code: err.code }
+          : { field: 'form', message: err instanceof Error ? err.message : t.auth.unknownError },
+      )
       shake()
     } finally {
       setBusy(false)
     }
   }
 
-  const errorProps = (field: 'name' | 'email' | 'password', id: string) =>
+  const errors: Partial<Record<Field | 'form', string>> = !formError
+    ? {}
+    : formError.field === 'form'
+      ? { form: formError.message }
+      : { [formError.field]: t.auth.errors[formError.code] }
+
+  const errorProps = (field: Field, id: string) =>
     errors[field] ? { 'aria-invalid': true as const, 'aria-describedby': `${id}-err` } : {}
 
   return (
@@ -144,6 +158,8 @@ export default function AuthPage({ mode }: { mode: Mode }) {
             <Icon name="chart" size={18} />
           </span>
           QuantLab
+          <span className="spacer" />
+          <LangSwitch />
         </div>
 
         <svg className="market" viewBox="0 0 1000 400" preserveAspectRatio="none" aria-hidden="true">
@@ -179,49 +195,46 @@ export default function AuthPage({ mode }: { mode: Mode }) {
         </svg>
 
         <div className="auth-pitch">
-          <h1>Uji strategi harian sebelum mempertaruhkan modal.</h1>
-          <p>
-            Backtest Binance Futures USDT-M dengan indikator yang bisa digabung, order flow, dan liquidity sweep —
-            tanpa look-ahead, dengan fee, slippage, dan leverage.
-          </p>
+          <h1>{t.auth.heroTitle}</h1>
+          <p>{t.auth.heroBody}</p>
         </div>
         <div className="auth-stats">
           <div>
             <strong className="num">{INDICATORS.length}</strong>
-            <span className="muted">indikator</span>
+            <span className="muted">{t.auth.statIndicators}</span>
           </div>
           <div>
             <strong className="num">USDT-M</strong>
-            <span className="muted">semua pair perpetual</span>
+            <span className="muted">{t.auth.statPairs}</span>
           </div>
           <div>
             <strong className="num">OOS</strong>
-            <span className="muted">uji out-of-sample</span>
+            <span className="muted">{t.auth.statOos}</span>
           </div>
         </div>
       </section>
 
       <main className="auth-panel">
         <div className="auth-card card" ref={card}>
-          <nav className="auth-tabs" aria-label="Masuk atau daftar">
+          <nav className="auth-tabs" aria-label={t.auth.tabsLabel}>
             <span className="indicator" aria-hidden="true" />
             <Link to="/login" aria-current={!isRegister ? 'page' : undefined}>
-              Masuk
+              {t.auth.login}
             </Link>
             <Link to="/register" aria-current={isRegister ? 'page' : undefined}>
-              Daftar
+              {t.auth.register}
             </Link>
           </nav>
 
-          <h2>{isRegister ? 'Buat akun' : 'Selamat datang kembali'}</h2>
+          <h2>{isRegister ? t.auth.registerTitle : t.auth.loginTitle}</h2>
           <p className="muted lead" style={{ margin: '6px 0 0' }}>
-            {isRegister ? 'Mulai menyusun dan membandingkan setup.' : 'Masuk untuk melanjutkan backtest.'}
+            {isRegister ? t.auth.registerLead : t.auth.loginLead}
           </p>
 
           <form onSubmit={onSubmit} noValidate key={mode}>
             {isRegister && (
               <label className="field" htmlFor={ids.name}>
-                <span>Nama</span>
+                <span>{t.auth.name}</span>
                 <input
                   id={ids.name}
                   name="name"
@@ -238,7 +251,7 @@ export default function AuthPage({ mode }: { mode: Mode }) {
               </label>
             )}
             <label className="field" htmlFor={ids.email}>
-              <span>Email</span>
+              <span>{t.auth.email}</span>
               <input
                 id={ids.email}
                 name="email"
@@ -257,7 +270,7 @@ export default function AuthPage({ mode }: { mode: Mode }) {
             </label>
             <div className="field">
               <span>
-                <label htmlFor={ids.password}>Password</label>
+                <label htmlFor={ids.password}>{t.auth.password}</label>
               </span>
               <div className="password-wrap">
                 <input
@@ -273,13 +286,13 @@ export default function AuthPage({ mode }: { mode: Mode }) {
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+                  aria-label={showPassword ? t.auth.hidePassword : t.auth.showPassword}
                   aria-pressed={showPassword}
                 >
                   <Icon name={showPassword ? 'eyeOff' : 'eye'} />
                 </button>
               </div>
-              {isRegister && !errors.password && <small className="muted">Minimal 8 karakter.</small>}
+              {isRegister && !errors.password && <small className="muted">{t.auth.passwordHint}</small>}
               {errors.password && (
                 <small id={`${ids.password}-err`} className="field-error">
                   {errors.password}
@@ -293,12 +306,10 @@ export default function AuthPage({ mode }: { mode: Mode }) {
             )}
             <button className="btn btn-primary" type="submit" disabled={busy} aria-busy={busy}>
               {busy && <span className="spinner" aria-hidden="true" />}
-              {isRegister ? 'Daftar' : 'Masuk'}
+              {isRegister ? t.auth.register : t.auth.login}
             </button>
           </form>
-          <p className="auth-note">
-            Tahap awal: akun disimpan di browser ini saja (localStorage, password di-hash PBKDF2). Belum ada server.
-          </p>
+          <p className="auth-note">{t.auth.note}</p>
         </div>
       </main>
     </div>
