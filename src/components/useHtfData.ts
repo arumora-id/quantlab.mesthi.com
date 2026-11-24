@@ -13,8 +13,12 @@ const MAX_HTF_BARS = 5000
  * Loads the higher-timeframe candles the given setups read (e.g. 4H and 15M for a 1M chart),
  * covering the chart plus a warm-up. Until they arrive, indicators fall back to resampling the chart.
  */
-export function useHtfData(symbol: string | null, candles: Candle[], setups: Setup[]): HtfData {
-  const [state, setState] = useState<{ key: string; htf: HtfData }>({ key: '', htf: EMPTY })
+export function useHtfData(
+  symbol: string | null,
+  candles: Candle[],
+  setups: Setup[],
+): { htf: HtfData; loading: boolean } {
+  const [state, setState] = useState<{ key: string; htf: HtfData; done: string }>({ key: '', htf: EMPTY, done: '' })
   const base = candles.length > 1 ? baseSeconds(candles) : 0
   const neededKey = useMemo(() => (base ? neededTimeframes(setups, base).join(',') : ''), [setups, base])
   const first = candles[0]?.time ?? 0
@@ -41,11 +45,14 @@ export function useHtfData(symbol: string | null, candles: Candle[], setups: Set
       setState((prev) => {
         const htf: HtfData = { ...(prev.key === key ? prev.htf : {}) }
         for (const r of results) if (r) htf[r[0]] = r[1]
-        return { key, htf }
+        return { key, htf, done: `${key}#${neededKey}` }
       })
     })
     return () => ctrl.abort()
   }, [symbol, key, neededKey, first, last])
 
-  return state.key === key ? state.htf : EMPTY
+  const htf = state.key === key ? state.htf : EMPTY
+  // loading while the higher timeframes this chart needs have not arrived yet
+  const loading = !!symbol && !!neededKey && state.done !== `${key}#${neededKey}`
+  return { htf, loading }
 }

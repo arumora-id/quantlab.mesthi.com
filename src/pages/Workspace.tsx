@@ -13,9 +13,11 @@ import { barsFor } from '../lib/simple'
 import { SimpleSummary } from '../components/SimpleSummary'
 import { useHtfData } from '../components/useHtfData'
 import { BinanceUnreachableError, fetchFuturesKlines } from '../lib/backtest/binanceFutures'
-import { runSetup } from '../lib/backtest/runSetup'
+import type { RunRequest, RunResult } from '../lib/backtest/compute'
+import { StatusBar } from '../components/StatusBar'
+import { useWorkerTask } from '../components/useWorkerTask'
 import { PRESETS } from '../lib/backtest/presets'
-import { computeIndicators, type Setup } from '../lib/backtest/rules'
+import type { Setup } from '../lib/backtest/rules'
 import type { BacktestConfig, Candle } from '../lib/backtest/types'
 import { date } from '../lib/format'
 import { deleteSetup, loadSetups, saveSetup } from '../lib/setupsStore'
@@ -51,6 +53,7 @@ export default function Workspace() {
   const [candles, setCandles] = useState<Candle[]>([])
   const [loaded, setLoaded] = useState<DataRequest | null>(null)
   const [loading, setLoading] = useState(false)
+  const [loadProgress, setLoadProgress] = useState<{ loaded: number; total: number } | null>(null)
   /** Either a message from Binance, or a translatable local error. */
   const [error, setError] = useState<
     { kind: 'raw'; message: string } | { kind: 'tooFew'; n: number; req: DataRequest } | { kind: 'failed' } | { kind: 'unreachable' } | null
@@ -67,9 +70,12 @@ export default function Workspace() {
     const ctrl = new AbortController()
     abort.current = ctrl
     setLoading(true)
+    setLoadProgress({ loaded: 0, total: req.bars })
     setError(null)
     try {
-      const data = await fetchFuturesKlines(req.symbol, req.interval, req.bars, ctrl.signal)
+      const data = await fetchFuturesKlines(req.symbol, req.interval, req.bars, ctrl.signal, (loaded, total) => {
+        if (!ctrl.signal.aborted) setLoadProgress({ loaded, total })
+      })
       if (data.length < 50) {
         setError({ kind: 'tooFew', n: data.length, req })
         return
@@ -81,7 +87,10 @@ export default function Workspace() {
       if (e instanceof BinanceUnreachableError) setError({ kind: 'unreachable' })
       else setError(e instanceof Error ? { kind: 'raw', message: e.message } : { kind: 'failed' })
     } finally {
-      if (!ctrl.signal.aborted) setLoading(false)
+      if (!ctrl.signal.aborted) {
+        setLoading(false)
+        setLoadProgress(null)
+      }
     }
   }, [])
 
@@ -97,16 +106,27 @@ export default function Workspace() {
   const dConfig = useDeferredValue(config)
   const oosStart = oosPct > 0 && candles.length ? Math.floor(candles.length * (1 - oosPct / 100)) : null
   const htfSetups = useMemo(() => [dSetup, ...PRESETS, ...saved], [dSetup, saved])
-  const htf = useHtfData(loaded?.symbol ?? null, candles, htfSetups)
+  const { htf, loading: htfLoading } = useHtfData(loaded?.symbol ?? null, candles, htfSetups)
 
-  const computed = useMemo(() => {
-    if (!candles.length) return null
-    return {
-      series: computeIndicators(candles, dSetup.indicators, htf),
-      result: runSetup(candles, dSetup, dConfig, 0, htf),
-      oos: oosStart !== null ? runSetup(candles, dSetup, dConfig, oosStart, htf).metrics : null,
-    }
-  }, [candles, dSetup, dConfig, oosStart, htf])
+  // the backtest runs on a Web Worker: the page stays responsive and shows progress while it computes
+  const runPayload = useMemo<RunRequest | null>(
+    () => (candles.length ? { candles, setup: dSetup, config: dConfig, oosStart, htf } : null),
+    [candles, dSetup, dConfig, oosStart, htf],
+  )
+  const run = useWorkerTask<RunRequest, RunResult>('run', runPayload)
+  const computed = run.result
+  const shown = run.source // the exact inputs behind `computed`
+  const busy = loading || htfLoading || run.busy
+  const statusText = loading
+    ? loadProgress && loadProgress.loaded > 0
+      ? t.status.data(loadProgress.loaded.toLocaleString(t.locale), loadProgress.total.toLocaleString(t.locale))
+      : t.status.dataStart
+    : htfLoading
+      ? t.status.htf
+      : run.busy
+        ? t.status.compute
+        : null
+  const statusProgress = loading && loadProgress ? loadProgress.loaded / loadProgress.total : null
 
   const hasEntries = !!setup.model || setup.entryLong.conditions.length + setup.entryShort.conditions.length > 0
   const loadedInfo =
@@ -207,25 +227,21 @@ export default function Workspace() {
               </button>
             </div>
           )}
-          {!computed && !errorText && (
-            <div className="card empty">
-              <span className="spinner" aria-hidden="true" />
-              {t.ws.loadingData}
-            </div>
-          )}
+          {statusText && view === 'backtest' && <StatusBar text={statusText} progress={statusProgress} />}
+          {run.error && <div className="alert error" role="alert">{t.status.failed(run.error)}</div>}
 
-          {computed && view === 'backtest' && (
-            <>
+          {computed && shown && view === 'backtest' && (
+            <div className={`results${busy ? ' stale' : ''}`} aria-busy={busy}>
               {!hasEntries && <div className="alert info">{t.ws.noEntries}</div>}
               {mode === 'simple' ? (
-                <SimpleSummary result={computed.result} oos={computed.oos} oosPct={oosPct} capital={dConfig.initialCapital} />
+                <SimpleSummary result={computed.result} oos={computed.oos} oosPct={oosPct} capital={shown.config.initialCapital} />
               ) : (
                 <MetricsGrid m={computed.result.metrics} oos={computed.oos} oosPct={oosPct} />
               )}
               <section className="card chart-card" aria-labelledby="price-title">
                 <div className="panel-head">
                   <h2 id="price-title">
-                    {loaded?.symbol} · {loaded?.interval} — {dSetup.name}
+                    {loaded?.symbol} · {loaded?.interval} — {shown.setup.name}
                   </h2>
                 </div>
                 <div className="legend" aria-label={t.ws.legend}>
@@ -238,8 +254,8 @@ export default function Workspace() {
                 </div>
                 <small className="muted">{t.simple.markers}</small>
                 <PriceChart
-                  candles={candles}
-                  instances={dSetup.indicators}
+                  candles={shown.candles}
+                  instances={shown.setup.indicators}
                   series={computed.series}
                   trades={computed.result.trades}
                   onLegend={setLegend}
@@ -274,10 +290,10 @@ export default function Workspace() {
                   <TradesTable trades={computed.result.trades} />
                 )}
               </section>
-            </>
+            </div>
           )}
 
-          {computed && view === 'compare' && (
+          {candles.length > 0 && view === 'compare' && (
             <ComparePanel
               candles={candles}
               htf={htf}
