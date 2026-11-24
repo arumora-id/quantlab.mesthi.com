@@ -47,6 +47,10 @@ Aktifkan proxy di nginx dengan `deploy/nginx-binance-proxy.conf` (petunjuk ada d
   ukuran posisi menyesuaikan target volatilitas 25%/tahun, hanya long (`trendEnsemble.ts`, engine bobot `exposureEngine.ts`).
 - **Scalping Ticker 4H + 15M + 1M**: metode asli agent Ticker di tiga timeframe (`tickerMtf.ts`); exit adalah tambahan QuantLab.
   Candle 4 jam/15 menit/mingguan diambil langsung dari Binance dengan riwayat pemanasan, lalu diselaraskan tanpa look-ahead.
+- **Proksi Fabio Valentini (Trend NY / Reversion London)**: profil volume 32 bin (POC, area nilai 70%, LVN) dari candle 1m,
+  konfirmasi delta taker per candle, stop di balik candle pemicu, target POC, risiko 0,25% per trade, tutup di akhir sesi
+  (`fabioProxy.ts`, spesifikasi dari agent Methoda). Ini proksi: footprint/order flow asli tidak tersedia dari candle.
+- **Kalman Trend**: filter Kalman tren linear lokal pada log harga (`kalman.ts`), output level dan slope.
 - **Label "Riset"**: preset yang bukti untuk aturan persisnya masih lemah.
 - **Rule builder** (`src/lib/backtest/rules.ts`): gabungkan beberapa indikator dengan kondisi `>`, `<`, cross ↑, cross ↓,
   logika AND/OR, untuk entry/exit long dan short. Setup bisa disimpan per user.

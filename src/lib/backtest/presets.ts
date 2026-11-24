@@ -111,6 +111,29 @@ export const PRESETS: Setup[] = [
     ),
   },
   {
+    // experiment spec from the Methoda research agent; a proxy, see fabioProxy.ts
+    name: 'Fabio Valentini-inspired: Trend (NY open)',
+    research: true,
+    preferredInterval: '1m',
+    model: { kind: 'fabioProxy', mode: 'trend', bins: 32, watch: 15, deltaMin: 0.2, riskPct: 0.25, maxWeight: 1, tickBps: 1 },
+    indicators: [],
+    entryLong: none(),
+    exitLong: none(),
+    entryShort: none(),
+    exitShort: none(),
+  },
+  {
+    name: 'Fabio Valentini-inspired: Reversion (London open)',
+    research: true,
+    preferredInterval: '1m',
+    model: { kind: 'fabioProxy', mode: 'reversion', bins: 32, watch: 15, deltaMin: 0.2, riskPct: 0.25, maxWeight: 1, tickBps: 1 },
+    indicators: [],
+    entryLong: none(),
+    exitLong: none(),
+    entryShort: none(),
+    exitShort: none(),
+  },
+  {
     // Ticker's skill on its real timeframes; the exit is a QuantLab addition (see tickerMtf.ts)
     name: 'Ticker Scalping: 4H + 15M + 1M',
     research: true,
@@ -122,6 +145,21 @@ export const PRESETS: Setup[] = [
     exitLong: all({ left: ind('tkm', 'signal'), op: '<', right: num(1) }),
     entryShort: all({ left: ind('tkm', 'signal'), op: '<', right: num(0) }),
     exitShort: all({ left: ind('tkm', 'signal'), op: '>', right: num(-1) }),
+  },
+  {
+    name: 'Kalman Trend',
+    research: true,
+    indicators: [{ id: 'kf', defId: 'kalman', params: { smooth: 20, slopeRatio: 0.01 } }],
+    entryLong: all(
+      { left: ind('kf', 'slope'), op: '>', right: num(0) },
+      { left: close, op: '>', right: ind('kf', 'value') },
+    ),
+    exitLong: all({ left: ind('kf', 'slope'), op: '<', right: num(0) }),
+    entryShort: all(
+      { left: ind('kf', 'slope'), op: '<', right: num(0) },
+      { left: close, op: '<', right: ind('kf', 'value') },
+    ),
+    exitShort: all({ left: ind('kf', 'slope'), op: '>', right: num(0) }),
   },
   {
     name: 'Ticker: Divergence + BOS',

@@ -1,6 +1,7 @@
 import { INDICATOR_BY_ID, source, type Source } from './catalog'
 import { baseSeconds, htfContext, mapToBase, TIMEFRAMES, type HtfData, type IndicatorTf } from './timeframe'
 import type { Interval } from './binanceFutures'
+import type { FabioParams } from './fabioProxy'
 import type { TrendEnsembleParams } from './trendEnsemble'
 import type { Candle, Position, Strategy } from './types'
 
@@ -31,6 +32,11 @@ export interface RuleGroup {
   conditions: Condition[]
 }
 
+/** Built-in models that size and exit their own positions. */
+export type SetupModel =
+  | ({ kind: 'trendEnsemble'; rebalanceBand: number } & TrendEnsembleParams)
+  | ({ kind: 'fabioProxy' } & FabioParams)
+
 export interface Setup {
   name: string
   indicators: IndicatorInstance[]
@@ -39,7 +45,7 @@ export interface Setup {
   entryShort: RuleGroup
   exitShort: RuleGroup
   /** A built-in sized model replaces the rules (the rule groups are then ignored). */
-  model?: { kind: 'trendEnsemble'; rebalanceBand: number } & TrendEnsembleParams
+  model?: SetupModel
   /** Chart timeframe the setup is designed for; Simple mode switches to it when the setup is picked. */
   preferredInterval?: Interval
   /** Shown with a "research" badge: evidence for the exact rules is weak or still being tested. */

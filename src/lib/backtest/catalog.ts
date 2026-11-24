@@ -11,6 +11,7 @@ import {
   sum,
   wma,
 } from './indicators'
+import { kalmanTrend } from './kalman'
 import { pivotConfirmed } from './pivots'
 import { tickerMtf } from './tickerMtf'
 import type { HigherTf, HtfContext } from './timeframe'
@@ -358,6 +359,13 @@ export const INDICATORS: IndicatorDef[] = [
       })
       return { up, down }
     },
+  },
+  {
+    id: 'kalman', name: 'Kalman Trend', category: 'Trend', placement: 'overlay',
+    params: [p('smooth', 'Kehalusan', 20, 1, 1000), p('slopeRatio', 'Rasio noise slope', 0.01, 0.0001, 1, 0.0001)],
+    outputs: ['value', 'slope'],
+    note: 'Filter Kalman (level + slope) pada log harga. value = harga yang dihaluskan, slope = % per bar. Makin besar kehalusan, makin lambat.',
+    compute: (c, q) => kalmanTrend(closes(c), q.smooth, q.slopeRatio),
   },
   // ---------- Momentum ----------
   {

@@ -113,6 +113,12 @@ const id = {
     volLookback: 'Periode volatilitas (bar)',
     maxWeight: 'Bobot maksimum (1 = tanpa leverage)',
     rebalanceBand: 'Rebalance jika bobot berubah >',
+    mode: 'Mode',
+    deltaMin: 'Ambang delta/volume',
+    watch: 'Batas tunggu LVN (bar)',
+    riskPct: 'Risiko per trade (% ekuitas)',
+    bins: 'Jumlah bin profil',
+    tickBps: 'Tick untuk stop (bps)',
     rules: 'Aturan',
     groups: { entryLong: 'Entry long', exitLong: 'Exit long', entryShort: 'Entry short', exitShort: 'Exit short' },
     logic: 'logika',
@@ -155,6 +161,7 @@ const id = {
       stop: 'stop loss',
       target: 'take profit',
       liquidation: 'likuidasi',
+      session: 'akhir sesi',
       end: 'akhir data',
     } satisfies Record<ExitReason, string>,
   },
@@ -197,8 +204,22 @@ const id = {
     researchHint: 'Bukti untuk aturan persis ini masih lemah atau sedang diuji. Jangan anggap sudah terbukti.',
     modelNote: (vol: number) =>
       `Model ini mengatur ukuran posisinya sendiri (target volatilitas ${vol}% per tahun, tanpa leverage, hanya beli), jadi leverage, stop loss, dan short tidak dipakai.`,
+    modelNoteFabio: (risk: number) =>
+      `Model ini menentukan stop, target, dan ukuran posisinya sendiri (risiko ${risk}% ekuitas per trade, hanya di jam sesi, posisi ditutup di akhir sesi), jadi leverage dan stop loss tidak dipakai. Ini proksi dari candle 1 menit, bukan footprint/order flow asli.`,
     custom: (name: string) => `Setup kustom aktif: ${name}. Pilih strategi di atas untuk kembali ke preset.`,
     presets: {
+      'Fabio Valentini-inspired: Trend (NY open)': {
+        tag: 'Scalping · proksi',
+        desc: 'Terinspirasi Fabio Valentini, proksi profil volume + delta 1 menit. Di jam buka New York: tunggu harga keluar dari area nilai kemarin, lalu masuk saat harga kembali menyentuh LVN dengan tekanan beli/jual searah. Target POC terdekat, stop di balik candle pemicu, risiko 0,25% per trade.',
+      },
+      'Fabio Valentini-inspired: Reversion (London open)': {
+        tag: 'Scalping · proksi',
+        desc: 'Terinspirasi Fabio Valentini, proksi profil volume + delta 1 menit. Di jam buka London: harga gagal bertahan di luar area nilai kemarin dan masuk kembali, lalu entry saat menyentuh LVN dengan tekanan searah. Target POC kemarin, risiko 0,25% per trade.',
+      },
+      'Kalman Trend': {
+        tag: 'Filter Kalman',
+        desc: 'Filter Kalman memperkirakan harga "sebenarnya" dan arah trennya dari data yang bising. Beli saat tren (slope) naik dan harga di atas garis Kalman; keluar saat slope berbalik.',
+      },
       'Ticker Scalping: 4H + 15M + 1M': {
         tag: 'Scalping',
         desc: 'Metode Ticker di tiga timeframe: arah dari tren 4 jam (EMA 200), tunggu divergence RSI di 15 menit, lalu masuk saat candle 1 menit menembus swing terakhir. Exit tambahan QuantLab: stop di titik divergence, target 2x risiko. Otomatis memakai candle 1 menit (sekitar 35 hari data).',
@@ -302,6 +323,8 @@ export const EN_PARAM_LABELS: Record<string, string> = {
   'Tunggu BOS (bar)': 'BOS wait (bars)',
   'Lebar swing 15M': 'Swing width 15M',
   'Lebar swing chart': 'Swing width (chart)',
+  Kehalusan: 'Smoothness',
+  'Rasio noise slope': 'Slope noise ratio',
   'Target (x risiko)': 'Target (x risk)',
 }
 
@@ -310,6 +333,7 @@ export const EN_NOTES: Record<string, string> = {
   supertrend: 'direction = 1 up, -1 down.',
   ichimoku: 'Span A/B are shifted forward like TradingView; Chikou is left out because it looks ahead.',
   donchian: 'upper/lower include the current bar, like TradingView. upperPrev/lowerPrev = channel of the previous N bars; breakout: close > upperPrev.',
+  kalman: 'Kalman filter (level + slope) on log prices. value = smoothed price, slope = % per bar. Higher smoothness = slower line.',
   price: 'Useful with a higher timeframe, e.g. the weekly close as a trend filter.',
   delta: 'Delta = taker buy − taker sell per bar (from Binance klines). Not order book / tick footprint data.',
   cvdDivergence: 'bull = price makes a new N-bar low but CVD does not; bear is the opposite.',
@@ -428,6 +452,12 @@ const en: Messages = {
     volLookback: 'Volatility window (bars)',
     maxWeight: 'Max weight (1 = no leverage)',
     rebalanceBand: 'Rebalance when weight changes >',
+    mode: 'Mode',
+    deltaMin: 'Delta/volume threshold',
+    watch: 'LVN wait (bars)',
+    riskPct: 'Risk per trade (% equity)',
+    bins: 'Profile bins',
+    tickBps: 'Stop tick (bps)',
     rules: 'Rules',
     groups: { entryLong: 'Entry long', exitLong: 'Exit long', entryShort: 'Entry short', exitShort: 'Exit short' },
     logic: 'logic',
@@ -470,6 +500,7 @@ const en: Messages = {
       stop: 'stop loss',
       target: 'take profit',
       liquidation: 'liquidation',
+      session: 'session end',
       end: 'end of data',
     },
   },
@@ -512,8 +543,22 @@ const en: Messages = {
     researchHint: 'Evidence for these exact rules is weak or still being tested. Do not treat it as proven.',
     modelNote: (vol) =>
       `This model sizes its own position (target volatility ${vol}% per year, no leverage, long only), so leverage, stop loss and shorts do not apply.`,
+    modelNoteFabio: (risk) =>
+      `This model sets its own stop, target and position size (${risk}% of equity at risk per trade, only in session hours, flat at the session end), so leverage and stop loss do not apply. It is a proxy built from 1-minute candles, not real footprint/order flow.`,
     custom: (name) => `Custom setup active: ${name}. Pick a strategy above to go back to a preset.`,
     presets: {
+      'Fabio Valentini-inspired: Trend (NY open)': {
+        tag: 'Scalping · proxy',
+        desc: 'Inspired by Fabio Valentini, a 1-minute volume-profile + delta proxy. In the New York open: wait for price to leave yesterday’s value area, then enter when it comes back to an LVN with buying/selling pressure in the trade’s direction. Target the nearest POC, stop beyond the trigger candle, 0.25% risk per trade.',
+      },
+      'Fabio Valentini-inspired: Reversion (London open)': {
+        tag: 'Scalping · proxy',
+        desc: 'Inspired by Fabio Valentini, a 1-minute volume-profile + delta proxy. In the London open: price fails outside yesterday’s value area and gets back in, then enters on an LVN touch with pressure in the trade’s direction. Target yesterday’s POC, 0.25% risk per trade.',
+      },
+      'Kalman Trend': {
+        tag: 'Kalman filter',
+        desc: 'A Kalman filter estimates the "true" price and its trend from noisy data. Buys while the slope is up and price is above the Kalman line; exits when the slope turns.',
+      },
       'Ticker Scalping: 4H + 15M + 1M': {
         tag: 'Scalping',
         desc: 'Ticker’s method on three timeframes: direction from the 4-hour trend (EMA 200), wait for an RSI divergence on 15 minutes, then enter when a 1-minute candle breaks the last swing. QuantLab exit: stop at the divergence point, target 2x the risk. Switches to 1-minute candles (about 35 days of data).',

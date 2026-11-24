@@ -11,6 +11,7 @@ import { Icon } from './Icon'
 import { NumberField } from './NumberField'
 import { TIMEFRAMES, type IndicatorTf } from '../lib/backtest/timeframe'
 import { useI18n } from '../i18n/context'
+import { modelNote } from './modelNote'
 
 type GroupKey = 'entryLong' | 'exitLong' | 'entryShort' | 'exitShort'
 
@@ -160,6 +161,56 @@ function GroupEditor({
   )
 }
 
+const MODEL_FIELDS = {
+  trendEnsemble: [
+    ['targetVol', 5, 100, 1],
+    ['volLookback', 10, 365, 1],
+    ['maxWeight', 0.1, 5, 0.1],
+    ['rebalanceBand', 0, 1, 0.05],
+  ],
+  fabioProxy: [
+    ['deltaMin', 0, 1, 0.05],
+    ['watch', 1, 120, 1],
+    ['riskPct', 0.05, 5, 0.05],
+    ['maxWeight', 0.1, 20, 0.1],
+    ['bins', 8, 128, 1],
+    ['tickBps', 0.1, 20, 0.1],
+  ],
+} as const
+
+function ModelPanel({ setup, onChange }: { setup: Setup; onChange: (s: Setup) => void }) {
+  const { t } = useI18n()
+  const model = setup.model!
+  const fields = MODEL_FIELDS[model.kind]
+  return (
+    <div className="ind-item">
+      <header>
+        <strong>{t.setup.model}</strong>
+      </header>
+      <p className="ind-note">
+        {model.kind === 'trendEnsemble'
+          ? `${t.setup.modelLookbacks}: ${model.lookbacks.join(', ')}`
+          : `${t.setup.mode}: ${model.mode}`}
+      </p>
+      <div className="ind-params">
+        {fields.map(([key, min, max, step]) => (
+          <label className="field" key={key}>
+            <span>{t.setup[key]}</span>
+            <NumberField
+              min={min}
+              max={max}
+              step={step}
+              value={(model as unknown as Record<string, number>)[key]}
+              onChange={(v) => onChange({ ...setup, model: { ...model, [key]: v } })}
+            />
+          </label>
+        ))}
+      </div>
+      <p className="ind-note">{modelNote(t, model)}</p>
+    </div>
+  )
+}
+
 interface Props {
   setup: Setup
   onChange: (s: Setup) => void
@@ -264,36 +315,7 @@ export function SetupBuilder({ setup, onChange, presets, saved, onSave, onDelete
       </div>
 
       {setup.model ? (
-        <div className="ind-item">
-          <header>
-            <strong>{t.setup.model}</strong>
-          </header>
-          <p className="ind-note">
-            {t.setup.modelLookbacks}: {setup.model.lookbacks.join(', ')}
-          </p>
-          <div className="ind-params">
-            {(
-              [
-                ['targetVol', 5, 100, 1],
-                ['volLookback', 10, 365, 1],
-                ['maxWeight', 0.1, 5, 0.1],
-                ['rebalanceBand', 0, 1, 0.05],
-              ] as const
-            ).map(([key, min, max, step]) => (
-              <label className="field" key={key}>
-                <span>{t.setup[key]}</span>
-                <NumberField
-                  min={min}
-                  max={max}
-                  step={step}
-                  value={setup.model![key]}
-                  onChange={(v) => onChange({ ...setup, model: { ...setup.model!, [key]: v } })}
-                />
-              </label>
-            ))}
-          </div>
-          <p className="ind-note">{t.simple.modelNote(setup.model.targetVol)}</p>
-        </div>
+        <ModelPanel setup={setup} onChange={onChange} />
       ) : (
         <>
       <div className="panel-head">

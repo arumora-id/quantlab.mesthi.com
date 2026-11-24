@@ -3,7 +3,7 @@ import { INDICATORS } from '../lib/backtest/catalog'
 import { EN_NOTES, EN_PARAM_LABELS, MESSAGES } from './messages'
 
 /** Labels in catalog.ts that are already English and need no translation. */
-const looksEnglish = (label: string) => !/(Panjang|Sumber|Faktor|Lebar|Tunggu|bar\)|naik|turun|risiko)/.test(label)
+const looksEnglish = (label: string) => !/(Panjang|Sumber|Faktor|Lebar|Tunggu|bar\)|naik|turun|risiko|Kehalusan|Rasio)/.test(label)
 
 describe('translations', () => {
   it('every indicator note has an English version', () => {

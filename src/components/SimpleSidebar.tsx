@@ -7,6 +7,7 @@ import { barsFor, isCapped } from '../lib/simple'
 import type { DataRequest } from './DataPanel'
 import { NumberField } from './NumberField'
 import { PairPicker } from './PairPicker'
+import { modelNote } from './modelNote'
 import { usePerpetualSymbols } from './usePerpetualSymbols'
 
 const TIMEFRAMES: Interval[] = ['1d', '4h', '1h', '15m', '1m']
@@ -162,7 +163,7 @@ export function SimpleSidebar({
         </label>
         {setup.model ? (
           <p className="alert info" style={{ margin: 0 }}>
-            {t.simple.modelNote(setup.model.targetVol)}
+            {modelNote(t, setup.model)}
           </p>
         ) : (
           <>
