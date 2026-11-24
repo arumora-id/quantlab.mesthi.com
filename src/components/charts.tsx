@@ -13,25 +13,54 @@ import {
 } from 'lightweight-charts'
 import { useEffect, useRef } from 'react'
 import { useI18n } from '../i18n/context'
+import { useTheme } from '../theme/context'
+import type { Theme } from '../theme/theme'
 import { INDICATOR_BY_ID } from '../lib/backtest/catalog'
 import { instanceLabel, type IndicatorInstance, type SeriesMap } from '../lib/backtest/rules'
 import type { Candle, EquityPoint, Trade } from '../lib/backtest/types'
 
-const SERIES_COLORS = ['#38bdf8', '#f59e0b', '#a78bfa', '#f472b6', '#2dd4bf', '#facc15', '#fb923c', '#e2e8f0']
+/** Indicator line colours per theme (darker shades keep contrast on the light background). */
+const SERIES_COLORS: Record<Theme, string[]> = {
+  dark: ['#38bdf8', '#f59e0b', '#a78bfa', '#f472b6', '#2dd4bf', '#facc15', '#fb923c', '#e2e8f0'],
+  light: ['#0284c7', '#d97706', '#7c3aed', '#db2777', '#0d9488', '#a16207', '#ea580c', '#334155'],
+}
 const HISTOGRAM_OUTPUTS = new Set(['hist', 'delta', 'volume'])
 
-const baseOptions: DeepPartial<ChartOptions> = {
-  autoSize: true,
-  layout: {
-    background: { type: ColorType.Solid, color: 'transparent' },
-    textColor: '#94a3b8',
-    fontFamily: 'Inter, system-ui, sans-serif',
-    panes: { separatorColor: '#334155', separatorHoverColor: '#475569' },
-  },
-  grid: { vertLines: { color: '#131a2e' }, horzLines: { color: '#131a2e' } },
-  rightPriceScale: { borderColor: '#334155' },
-  timeScale: { borderColor: '#334155', timeVisible: true },
-  crosshair: { mode: 0 },
+/** Chart colours come from the active theme's CSS tokens. */
+function palette() {
+  const css = getComputedStyle(document.documentElement)
+  const v = (name: string) => css.getPropertyValue(name).trim()
+  return {
+    text: v('--chart-text'),
+    grid: v('--chart-grid'),
+    border: v('--chart-border'),
+    up: v('--color-up'),
+    down: v('--color-down'),
+    winSoft: v('--color-win-soft'),
+    lossSoft: v('--color-loss-soft'),
+    bench: v('--chart-bench'),
+  }
+}
+
+function baseOptions(p: ReturnType<typeof palette>): DeepPartial<ChartOptions> {
+  return {
+    autoSize: true,
+    layout: {
+      background: { type: ColorType.Solid, color: 'transparent' },
+      textColor: p.text,
+      fontFamily: 'Inter, system-ui, sans-serif',
+      panes: { separatorColor: p.border, separatorHoverColor: p.text },
+    },
+    grid: { vertLines: { color: p.grid }, horzLines: { color: p.grid } },
+    rightPriceScale: { borderColor: p.border },
+    timeScale: { borderColor: p.border, timeVisible: true },
+    crosshair: { mode: 0 },
+  }
+}
+
+const alpha = (hex: string, a: number) => {
+  const n = parseInt(hex.replace('#', ''), 16)
+  return `rgb(${(n >> 16) & 255} ${(n >> 8) & 255} ${n & 255} / ${a})`
 }
 
 const t = (s: number) => s as UTCTimestamp
@@ -53,6 +82,7 @@ interface PriceChartProps {
 
 export function PriceChart({ candles, instances, series, trades, onLegend }: PriceChartProps) {
   const { t: tr } = useI18n()
+  const { theme } = useTheme()
   const ref = useRef<HTMLDivElement>(null)
   const paneCount = instances.reduce((n, i) => {
     const def = INDICATOR_BY_ID[i.defId]
@@ -63,12 +93,14 @@ export function PriceChart({ candles, instances, series, trades, onLegend }: Pri
 
   useEffect(() => {
     if (!ref.current || !candles.length) return
-    const chart = createChart(ref.current, baseOptions)
+    const p = palette()
+    const colors = SERIES_COLORS[theme]
+    const chart = createChart(ref.current, baseOptions(p))
     const price = chart.addSeries(CandlestickSeries, {
-      upColor: '#22c55e',
-      downColor: '#ef4444',
-      wickUpColor: '#22c55e',
-      wickDownColor: '#ef4444',
+      upColor: p.up,
+      downColor: p.down,
+      wickUpColor: p.up,
+      wickDownColor: p.down,
       borderVisible: false,
     })
     price.setData(candles.map((c) => ({ time: t(c.time), open: c.open, high: c.high, low: c.low, close: c.close })))
@@ -83,7 +115,7 @@ export function PriceChart({ candles, instances, series, trades, onLegend }: Pri
       const out = series[inst.id]
       if (!def || !out) continue
       if (def.placement === 'markers') {
-        const c = SERIES_COLORS[color++ % SERIES_COLORS.length]
+        const c = colors[color++ % colors.length]
         legend.push({ label: `${inst.id} ▲▼ ${instanceLabel(inst)}`, color: c })
         candles.forEach((bar, i) => {
           const bull = out.bull?.[i] === 1 || (out.signal?.[i] === 1 && out.signal[i - 1] !== 1)
@@ -97,12 +129,12 @@ export function PriceChart({ candles, instances, series, trades, onLegend }: Pri
       for (const output of def.outputs) {
         if (def.placement === 'pane' && def.separatePanes) pane++
         const paneIndex = def.placement === 'pane' ? pane : 0
-        const c = SERIES_COLORS[color++ % SERIES_COLORS.length]
+        const c = colors[color++ % colors.length]
         if (output === 'direction') continue
         const data = points(candles, out[output])
         if (HISTOGRAM_OUTPUTS.has(output)) {
           const s = chart.addSeries(HistogramSeries, { priceLineVisible: false, lastValueVisible: false }, paneIndex)
-          s.setData(data.map((d) => ({ ...d, color: d.value >= 0 ? 'rgb(34 197 94 / 0.6)' : 'rgb(239 68 68 / 0.6)' })))
+          s.setData(data.map((d) => ({ ...d, color: d.value >= 0 ? alpha(p.up, 0.6) : alpha(p.down, 0.6) })))
         } else {
           const s = chart.addSeries(
             LineSeries,
@@ -121,14 +153,14 @@ export function PriceChart({ candles, instances, series, trades, onLegend }: Pri
         time: t(tr.entryTime),
         position: long ? 'belowBar' : 'aboveBar',
         shape: long ? 'arrowUp' : 'arrowDown',
-        color: long ? '#22c55e' : '#ef4444',
+        color: long ? p.up : p.down,
         text: long ? 'L' : 'S',
       })
       markers.push({
         time: t(tr.exitTime),
         position: long ? 'aboveBar' : 'belowBar',
         shape: 'circle',
-        color: tr.pnl >= 0 ? '#86efac' : '#fca5a5',
+        color: tr.pnl >= 0 ? p.winSoft : p.lossSoft,
         text: tr.exitReason === 'signal' ? 'x' : tr.exitReason,
       })
     }
@@ -140,23 +172,25 @@ export function PriceChart({ candles, instances, series, trades, onLegend }: Pri
     chart.timeScale().fitContent()
     onLegend?.(legend)
     return () => chart.remove()
-  }, [candles, instances, series, trades, onLegend])
+  }, [candles, instances, series, trades, onLegend, theme])
 
   return <div ref={ref} className="chart-box" style={{ height }} role="img" aria-label={tr.chart.price} />
 }
 
 export function EquityChart({ equity }: { equity: EquityPoint[] }) {
+  const { theme } = useTheme()
   const { t: tr } = useI18n()
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!ref.current || !equity.length) return
-    const chart = createChart(ref.current, baseOptions)
-    const strat = chart.addSeries(LineSeries, { color: '#22c55e', lineWidth: 2, priceLineVisible: false })
-    const bench = chart.addSeries(LineSeries, { color: '#64748b', lineWidth: 1, lineStyle: 2, priceLineVisible: false })
+    const p = palette()
+    const chart = createChart(ref.current, baseOptions(p))
+    const strat = chart.addSeries(LineSeries, { color: p.up, lineWidth: 2, priceLineVisible: false })
+    const bench = chart.addSeries(LineSeries, { color: p.bench, lineWidth: 1, lineStyle: 2, priceLineVisible: false })
     strat.setData(equity.map((p) => ({ time: t(p.time), value: p.equity })))
     bench.setData(equity.map((p) => ({ time: t(p.time), value: p.benchmark })))
     chart.timeScale().fitContent()
     return () => chart.remove()
-  }, [equity])
+  }, [equity, theme])
   return <div ref={ref} className="chart-box" style={{ height: 240 }} role="img" aria-label={tr.chart.equity} />
 }

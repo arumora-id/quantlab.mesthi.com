@@ -63,7 +63,13 @@ export function createBinanceClient(fetchFn: typeof fetch = (...a) => fetch(...a
   }
 
   /** Fetches up to `bars` closed candles, paging backwards from now. */
-  async function klines(symbol: string, interval: KlineInterval, bars: number, signal?: AbortSignal): Promise<Candle[]> {
+  async function klines(
+    symbol: string,
+    interval: KlineInterval,
+    bars: number,
+    signal?: AbortSignal,
+    onProgress?: (loaded: number, total: number) => void,
+  ): Promise<Candle[]> {
     const out: Candle[] = []
     let endTime: number | undefined
     while (out.length < bars) {
@@ -73,6 +79,7 @@ export function createBinanceClient(fetchFn: typeof fetch = (...a) => fetch(...a
       const rows = await get<RawKline[]>(`/klines?${q}`, signal)
       if (!rows.length) break
       out.unshift(...rows.map(toCandle))
+      onProgress?.(Math.min(out.length, bars), bars)
       endTime = rows[0][0] - 1
       if (rows.length < limit) break
     }

@@ -1,17 +1,14 @@
 import { useMemo, useState } from 'react'
-import { runSetup } from '../lib/backtest/runSetup'
+import type { CompareRequest, CompareRow } from '../lib/backtest/compute'
+import { StatusBar } from './StatusBar'
+import { useWorkerTask } from './useWorkerTask'
 import type { Setup } from '../lib/backtest/rules'
 import type { HtfData } from '../lib/backtest/timeframe'
-import type { BacktestConfig, Candle, Metrics } from '../lib/backtest/types'
+import type { BacktestConfig, Candle } from '../lib/backtest/types'
 import { fixed, pct, plainPct, tone } from '../lib/format'
 import { useI18n } from '../i18n/context'
 
-interface Row {
-  setup: Setup
-  source: 'preset' | 'saved'
-  full: Metrics
-  oos: Metrics | null
-}
+type Row = CompareRow
 
 type SortKey = 'total' | 'oos' | 'sharpe' | 'dd' | 'pf' | 'win'
 
@@ -38,18 +35,22 @@ export function ComparePanel({ candles, htf, config, oosStart, presets, saved, o
   const { t } = useI18n()
   const [sort, setSort] = useState<SortKey>('oos')
 
-  const rows = useMemo<Row[]>(() => {
-    const all = [
-      ...presets.map((s) => ({ setup: s, source: 'preset' as const })),
-      ...saved.map((s) => ({ setup: s, source: 'saved' as const })),
-    ]
-    return all.map(({ setup, source }) => ({
-      setup,
-      source,
-      full: runSetup(candles, setup, config, 0, htf).metrics,
-      oos: oosStart !== null ? runSetup(candles, setup, config, oosStart, htf).metrics : null,
-    }))
-  }, [candles, htf, config, oosStart, presets, saved])
+  const payload = useMemo<CompareRequest>(
+    () => ({
+      candles,
+      htf,
+      config,
+      oosStart,
+      setups: [
+        ...presets.map((s) => ({ setup: s, source: 'preset' as const })),
+        ...saved.map((s) => ({ setup: s, source: 'saved' as const })),
+      ],
+    }),
+    [candles, htf, config, oosStart, presets, saved],
+  )
+  const task = useWorkerTask<CompareRequest, CompareRow[]>('compare', payload)
+  const rows = task.result ?? []
+  const total = payload.setups.length
 
   const sorted = [...rows].sort((a, b) => SORTS[sort](b) - SORTS[sort](a))
   const head = (key: SortKey, label: string) => (
@@ -69,7 +70,14 @@ export function ComparePanel({ candles, htf, config, oosStart, presets, saved, o
       <p className="alert info" style={{ margin: 0 }}>
         {t.compare.warning}
       </p>
-      <div className="table-wrap">
+      {task.busy && (
+        <StatusBar
+          text={t.status.compare(task.progress?.done ?? 0, total)}
+          progress={(task.progress?.done ?? 0) / total}
+        />
+      )}
+      {task.error && <div className="alert error" role="alert">{t.status.failed(task.error)}</div>}
+      <div className={`table-wrap${task.busy ? ' stale' : ''}`} aria-busy={task.busy}>
         <table>
           <thead>
             <tr>
