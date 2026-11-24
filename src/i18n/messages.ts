@@ -216,6 +216,14 @@ const id = {
         tag: 'Scalping · proksi',
         desc: 'Terinspirasi Fabio Valentini, proksi profil volume + delta 1 menit. Di jam buka London: harga gagal bertahan di luar area nilai kemarin dan masuk kembali, lalu entry saat menyentuh LVN dengan tekanan searah. Target POC kemarin, risiko 0,25% per trade.',
       },
+      'LuxAlgo SuperTrend AI (Clustering)': {
+        tag: 'LuxAlgo',
+        desc: 'Konsep LuxAlgo: 9 SuperTrend dengan jarak berbeda dinilai performanya, lalu dikelompokkan (K-means). Garis akhir memakai jarak dari kelompok terbaik. Selalu ikut arah garis: beli saat berbalik naik, short saat berbalik turun. Lisensi LuxAlgo: hanya non-komersial.',
+      },
+      'SMC Structure (LuxAlgo-style)': {
+        tag: 'Smart Money Concepts',
+        desc: 'Ala SMC LuxAlgo (definisi QuantLab sendiri): ikuti patahan struktur kecil (swing 5 bar) hanya searah struktur besar (swing 50 bar). Keluar saat struktur kecil berbalik (CHoCH).',
+      },
       'Kalman Trend': {
         tag: 'Filter Kalman',
         desc: 'Filter Kalman memperkirakan harga "sebenarnya" dan arah trennya dari data yang bising. Beli saat tren (slope) naik dan harga di atas garis Kalman; keluar saat slope berbalik.',
@@ -324,6 +332,13 @@ export const EN_PARAM_LABELS: Record<string, string> = {
   'Lebar swing 15M': 'Swing width 15M',
   'Lebar swing chart': 'Swing width (chart)',
   Kehalusan: 'Smoothness',
+  'Faktor min': 'Min factor',
+  'Faktor maks': 'Max factor',
+  'Langkah faktor': 'Factor step',
+  'Memori performa': 'Performance memory',
+  'Klaster (0 terburuk, 1 rata-rata, 2 terbaik)': 'Cluster (0 worst, 1 average, 2 best)',
+  'Maks iterasi K-means': 'K-means max iterations',
+  'Panjang swing': 'Swing length',
   'Rasio noise slope': 'Slope noise ratio',
   'Target (x risiko)': 'Target (x risk)',
 }
@@ -333,6 +348,10 @@ export const EN_NOTES: Record<string, string> = {
   supertrend: 'direction = 1 up, -1 down.',
   ichimoku: 'Span A/B are shifted forward like TradingView; Chikou is left out because it looks ahead.',
   donchian: 'upper/lower include the current bar, like TradingView. upperPrev/lowerPrev = channel of the previous N bars; breakout: close > upperPrev.',
+  supertrendAI:
+    'LuxAlgo concept (CC BY-NC-SA 4.0, non-commercial only), rewritten from formulas. signal 1 long / -1 short after a flip; stop = trailing stop; factor = K-means chosen factor.',
+  smcStructure:
+    'QuantLab’s own SMC-style definitions: swing = confirmed pivot; a close beyond a swing = BOS (with the trend) or CHoCH (reversal). trend 1/-1.',
   kalman: 'Kalman filter (level + slope) on log prices. value = smoothed price, slope = % per bar. Higher smoothness = slower line.',
   price: 'Useful with a higher timeframe, e.g. the weekly close as a trend filter.',
   delta: 'Delta = taker buy − taker sell per bar (from Binance klines). Not order book / tick footprint data.',
@@ -554,6 +573,14 @@ const en: Messages = {
       'Fabio Valentini-inspired: Reversion (London open)': {
         tag: 'Scalping · proxy',
         desc: 'Inspired by Fabio Valentini, a 1-minute volume-profile + delta proxy. In the London open: price fails outside yesterday’s value area and gets back in, then enters on an LVN touch with pressure in the trade’s direction. Target yesterday’s POC, 0.25% risk per trade.',
+      },
+      'LuxAlgo SuperTrend AI (Clustering)': {
+        tag: 'LuxAlgo',
+        desc: 'LuxAlgo concept: nine SuperTrends with different distances are scored, then grouped (K-means). The final line uses the distance of the best group. Always follows the line: long when it turns up, short when it turns down. LuxAlgo license: non-commercial only.',
+      },
+      'SMC Structure (LuxAlgo-style)': {
+        tag: 'Smart Money Concepts',
+        desc: 'In the style of LuxAlgo’s SMC (QuantLab’s own definitions): follow small structure breaks (5-bar swings) only in the direction of the larger structure (50-bar swings). Exit when the small structure turns (CHoCH).',
       },
       'Kalman Trend': {
         tag: 'Kalman filter',
