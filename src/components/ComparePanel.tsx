@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
-import { runBacktest } from '../lib/backtest/engine'
-import { setupToStrategy, type Setup } from '../lib/backtest/rules'
+import { runSetup } from '../lib/backtest/runSetup'
+import type { Setup } from '../lib/backtest/rules'
+import type { HtfData } from '../lib/backtest/timeframe'
 import type { BacktestConfig, Candle, Metrics } from '../lib/backtest/types'
 import { fixed, pct, plainPct, tone } from '../lib/format'
 import { useI18n } from '../i18n/context'
@@ -25,6 +26,7 @@ const SORTS: Record<SortKey, (r: Row) => number> = {
 
 interface Props {
   candles: Candle[]
+  htf: HtfData
   config: BacktestConfig
   oosStart: number | null
   presets: Setup[]
@@ -32,7 +34,7 @@ interface Props {
   onLoad: (s: Setup) => void
 }
 
-export function ComparePanel({ candles, config, oosStart, presets, saved, onLoad }: Props) {
+export function ComparePanel({ candles, htf, config, oosStart, presets, saved, onLoad }: Props) {
   const { t } = useI18n()
   const [sort, setSort] = useState<SortKey>('oos')
 
@@ -41,16 +43,13 @@ export function ComparePanel({ candles, config, oosStart, presets, saved, onLoad
       ...presets.map((s) => ({ setup: s, source: 'preset' as const })),
       ...saved.map((s) => ({ setup: s, source: 'saved' as const })),
     ]
-    return all.map(({ setup, source }) => {
-      const strat = setupToStrategy(setup)
-      return {
-        setup,
-        source,
-        full: runBacktest(candles, strat, {}, config).metrics,
-        oos: oosStart !== null ? runBacktest(candles, strat, {}, config, oosStart).metrics : null,
-      }
-    })
-  }, [candles, config, oosStart, presets, saved])
+    return all.map(({ setup, source }) => ({
+      setup,
+      source,
+      full: runSetup(candles, setup, config, 0, htf).metrics,
+      oos: oosStart !== null ? runSetup(candles, setup, config, oosStart, htf).metrics : null,
+    }))
+  }, [candles, htf, config, oosStart, presets, saved])
 
   const sorted = [...rows].sort((a, b) => SORTS[sort](b) - SORTS[sort](a))
   const head = (key: SortKey, label: string) => (
@@ -92,6 +91,11 @@ export function ComparePanel({ candles, config, oosStart, presets, saved, onLoad
               <tr key={`${r.source}:${r.setup.name}`}>
                 <td>
                   {r.setup.name} <span className="badge">{t.compare[r.source]}</span>
+                  {r.setup.research && (
+                    <span className="badge research" title={t.simple.researchHint}>
+                      {t.simple.research}
+                    </span>
+                  )}
                 </td>
                 <td className={`num ${tone(r.full.totalReturn)}`}>{pct(r.full.totalReturn)}</td>
                 {oosStart !== null && <td className={`num ${tone(r.oos!.totalReturn)}`}>{pct(r.oos!.totalReturn)}</td>}

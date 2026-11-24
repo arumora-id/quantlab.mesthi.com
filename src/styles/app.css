@@ -999,3 +999,15 @@ details > summary {
 details > summary::-webkit-details-marker {
   display: none;
 }
+
+.badges {
+  display: inline-flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.badge.research {
+  color: #fcd34d;
+  background: rgb(245 158 11 / 0.12);
+}

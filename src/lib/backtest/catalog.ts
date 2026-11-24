@@ -11,6 +11,10 @@ import {
   sum,
   wma,
 } from './indicators'
+import { kalmanTrend } from './kalman'
+import { pivotConfirmed } from './pivots'
+import { tickerMtf } from './tickerMtf'
+import type { HigherTf, HtfContext } from './timeframe'
 import type { Candle, ParamDef } from './types'
 
 type Series = number[]
@@ -39,7 +43,9 @@ export interface IndicatorDef {
   note?: string
   /** Outputs have unrelated scales: chart each output in its own pane. */
   separatePanes?: boolean
-  compute: (candles: Candle[], p: Record<string, number>) => Outputs
+  /** Higher timeframes this indicator reads itself (loaded from Binance when the chart is smaller). */
+  needsTf?: HigherTf[]
+  compute: (candles: Candle[], p: Record<string, number>, ctx?: HtfContext) => Outputs
 }
 
 export const SOURCES = ['close', 'open', 'high', 'low', 'hl2', 'hlc3', 'ohlc4'] as const
@@ -192,17 +198,6 @@ function stochK(c: Candle[], n: number, src: Series = closes(c), hi = highs(c), 
   return src.map((v, i) => (hh[i] === ll[i] ? 50 : (100 * (v - ll[i])) / (hh[i] - ll[i])))
 }
 
-function pivotConfirmed(c: Candle[], j: number, k: number, dir: 'low' | 'high') {
-  const v = dir === 'low' ? c[j].low : c[j].high
-  for (let m = j - k; m <= j + k; m++) {
-    if (m === j) continue
-    const o = dir === 'low' ? c[m].low : c[m].high
-    // strict on the left, non-strict on the right: a flat extreme pivots on its first bar
-    const beats = dir === 'low' ? (m < j ? v < o : v <= o) : m < j ? v > o : v >= o
-    if (!beats) return false
-  }
-  return true
-}
 
 /**
  * Single-timeframe adaptation of Ticker's "Analisis divergence multitimeframe" skill
@@ -260,6 +255,11 @@ const pickSource = (c: Candle[], v: number) => source(c, SOURCES[v] ?? 'close')
 
 export const INDICATORS: IndicatorDef[] = [
   // ---------- Trend ----------
+  {
+    id: 'price', name: 'Price (OHLC)', category: 'Trend', placement: 'overlay', params: [], outputs: ['close', 'open', 'high', 'low'],
+    note: 'Berguna dengan timeframe lebih besar, mis. close mingguan sebagai filter tren.',
+    compute: (c) => ({ close: closes(c), open: source(c, 'open'), high: highs(c), low: lows(c) }),
+  },
   {
     id: 'sma', name: 'SMA', category: 'Trend', placement: 'overlay', params: [len(20), srcParam], outputs: ['value'],
     compute: (c, q) => ({ value: sma(pickSource(c, q.source), q.length) }),
@@ -359,6 +359,13 @@ export const INDICATORS: IndicatorDef[] = [
       })
       return { up, down }
     },
+  },
+  {
+    id: 'kalman', name: 'Kalman Trend', category: 'Trend', placement: 'overlay',
+    params: [p('smooth', 'Kehalusan', 20, 1, 1000), p('slopeRatio', 'Rasio noise slope', 0.01, 0.0001, 1, 0.0001)],
+    outputs: ['value', 'slope'],
+    note: 'Filter Kalman (level + slope) pada log harga. value = harga yang dihaluskan, slope = % per bar. Makin besar kehalusan, makin lambat.',
+    compute: (c, q) => kalmanTrend(closes(c), q.smooth, q.slopeRatio),
   },
   // ---------- Momentum ----------
   {
@@ -491,12 +498,18 @@ export const INDICATORS: IndicatorDef[] = [
   },
   {
     id: 'donchian', name: 'Donchian Channels', category: 'Volatilitas', placement: 'overlay', params: [len(20)],
-    outputs: ['upper', 'middle', 'lower'],
-    note: 'Termasuk bar saat ini, seperti TradingView. Untuk breakout pakai high/low vs upper/lower.',
+    outputs: ['upper', 'middle', 'lower', 'upperPrev', 'lowerPrev'],
+    note: 'upper/lower termasuk bar saat ini, seperti TradingView. upperPrev/lowerPrev = kanal N bar sebelumnya; breakout: close > upperPrev.',
     compute: (c, q) => {
       const upper = highest(highs(c), q.length)
       const lower = lowest(lows(c), q.length)
-      return { upper, lower, middle: upper.map((u, i) => (u + lower[i]) / 2) }
+      return {
+        upper,
+        lower,
+        middle: upper.map((u, i) => (u + lower[i]) / 2),
+        upperPrev: shift(upper, 1),
+        lowerPrev: shift(lower, 1),
+      }
     },
   },
   {
@@ -621,6 +634,21 @@ export const INDICATORS: IndicatorDef[] = [
     outputs: ['signal'],
     note: 'signal 1 long, -1 short, 0 flat. Adaptasi satu timeframe dari metode 4H/15M/1M agent Ticker.',
     compute: tickerDivergence,
+  },
+  {
+    id: 'tickerMtf', name: 'Ticker MTF: 4H Bias + 15M Divergence + 1M BOS', category: 'Sinyal', placement: 'markers',
+    params: [
+      p('trend', 'EMA bias 4H', 200, 5, 400),
+      p('rsi', 'RSI 15M', 14, 2, 50),
+      p('swing', 'Lebar swing 15M', 3, 1, 10),
+      p('bosSwing', 'Lebar swing chart', 3, 1, 20),
+      p('wait', 'Tunggu BOS (bar)', 60, 1, 1000),
+      p('rr', 'Target (x risiko)', 2, 0.5, 10, 0.5),
+    ],
+    outputs: ['signal'],
+    needsTf: ['4h', '15m'],
+    note: 'Metode asli Ticker di tiga timeframe. Pakai chart 1m. Exit (stop di pivot divergence, target R, atau bias berbalik) tambahan QuantLab, bukan bagian metode Ticker.',
+    compute: tickerMtf,
   },
 ]
 

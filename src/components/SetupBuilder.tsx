@@ -9,7 +9,9 @@ import {
 import { instanceLabel, type Condition, type IndicatorInstance, type Operand, type Operator, type RuleGroup, type Setup } from '../lib/backtest/rules'
 import { Icon } from './Icon'
 import { NumberField } from './NumberField'
+import { TIMEFRAMES, type IndicatorTf } from '../lib/backtest/timeframe'
 import { useI18n } from '../i18n/context'
+import { modelNote } from './modelNote'
 
 type GroupKey = 'entryLong' | 'exitLong' | 'entryShort' | 'exitShort'
 
@@ -159,6 +161,56 @@ function GroupEditor({
   )
 }
 
+const MODEL_FIELDS = {
+  trendEnsemble: [
+    ['targetVol', 5, 100, 1],
+    ['volLookback', 10, 365, 1],
+    ['maxWeight', 0.1, 5, 0.1],
+    ['rebalanceBand', 0, 1, 0.05],
+  ],
+  fabioProxy: [
+    ['deltaMin', 0, 1, 0.05],
+    ['watch', 1, 120, 1],
+    ['riskPct', 0.05, 5, 0.05],
+    ['maxWeight', 0.1, 20, 0.1],
+    ['bins', 8, 128, 1],
+    ['tickBps', 0.1, 20, 0.1],
+  ],
+} as const
+
+function ModelPanel({ setup, onChange }: { setup: Setup; onChange: (s: Setup) => void }) {
+  const { t } = useI18n()
+  const model = setup.model!
+  const fields = MODEL_FIELDS[model.kind]
+  return (
+    <div className="ind-item">
+      <header>
+        <strong>{t.setup.model}</strong>
+      </header>
+      <p className="ind-note">
+        {model.kind === 'trendEnsemble'
+          ? `${t.setup.modelLookbacks}: ${model.lookbacks.join(', ')}`
+          : `${t.setup.mode}: ${model.mode}`}
+      </p>
+      <div className="ind-params">
+        {fields.map(([key, min, max, step]) => (
+          <label className="field" key={key}>
+            <span>{t.setup[key]}</span>
+            <NumberField
+              min={min}
+              max={max}
+              step={step}
+              value={(model as unknown as Record<string, number>)[key]}
+              onChange={(v) => onChange({ ...setup, model: { ...model, [key]: v } })}
+            />
+          </label>
+        ))}
+      </div>
+      <p className="ind-note">{modelNote(t, model)}</p>
+    </div>
+  )
+}
+
 interface Props {
   setup: Setup
   onChange: (s: Setup) => void
@@ -204,6 +256,12 @@ export function SetupBuilder({ setup, onChange, presets, saved, onSave, onDelete
     onChange({
       ...setup,
       indicators: setup.indicators.map((i) => (i.id === id ? { ...i, params: { ...i.params, [key]: v } } : i)),
+    })
+
+  const setTf = (id: string, tf: IndicatorTf) =>
+    onChange({
+      ...setup,
+      indicators: setup.indicators.map((i) => (i.id === id ? { ...i, tf } : i)),
     })
 
   const loadValue = (v: string) => {
@@ -256,6 +314,10 @@ export function SetupBuilder({ setup, onChange, presets, saved, onSave, onDelete
         </button>
       </div>
 
+      {setup.model ? (
+        <ModelPanel setup={setup} onChange={onChange} />
+      ) : (
+        <>
       <div className="panel-head">
         <h2>{t.setup.indicators(setup.indicators.length)}</h2>
       </div>
@@ -285,6 +347,21 @@ export function SetupBuilder({ setup, onChange, presets, saved, onSave, onDelete
                 <Icon name="trash" />
               </button>
             </header>
+            <label className="field">
+              <span>{t.setup.timeframe}</span>
+              <select
+                className="input"
+                value={inst.tf ?? 'chart'}
+                onChange={(e) => setTf(inst.id, e.target.value as IndicatorTf)}
+              >
+                <option value="chart">{t.setup.tfChart}</option>
+                {Object.keys(TIMEFRAMES).map((tf) => (
+                  <option key={tf} value={tf}>
+                    {tf}
+                  </option>
+                ))}
+              </select>
+            </label>
             {def.params.length > 0 && (
               <div className="ind-params">
                 {def.params.map((p) => (
@@ -335,6 +412,8 @@ export function SetupBuilder({ setup, onChange, presets, saved, onSave, onDelete
           onChange={(group) => onChange({ ...setup, [key]: group })}
         />
       ))}
+        </>
+      )}
     </section>
   )
 }

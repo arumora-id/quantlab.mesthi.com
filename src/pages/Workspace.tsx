@@ -11,10 +11,11 @@ import { SetupBuilder } from '../components/SetupBuilder'
 import { SimpleSidebar } from '../components/SimpleSidebar'
 import { barsFor } from '../lib/simple'
 import { SimpleSummary } from '../components/SimpleSummary'
+import { useHtfData } from '../components/useHtfData'
 import { BinanceUnreachableError, fetchFuturesKlines } from '../lib/backtest/binanceFutures'
-import { runBacktest } from '../lib/backtest/engine'
+import { runSetup } from '../lib/backtest/runSetup'
 import { PRESETS } from '../lib/backtest/presets'
-import { computeIndicators, setupToStrategy, type Setup } from '../lib/backtest/rules'
+import { computeIndicators, type Setup } from '../lib/backtest/rules'
 import type { BacktestConfig, Candle } from '../lib/backtest/types'
 import { date } from '../lib/format'
 import { deleteSetup, loadSetups, saveSetup } from '../lib/setupsStore'
@@ -95,18 +96,19 @@ export default function Workspace() {
   const dSetup = useDeferredValue(setup)
   const dConfig = useDeferredValue(config)
   const oosStart = oosPct > 0 && candles.length ? Math.floor(candles.length * (1 - oosPct / 100)) : null
+  const htfSetups = useMemo(() => [dSetup, ...PRESETS, ...saved], [dSetup, saved])
+  const htf = useHtfData(loaded?.symbol ?? null, candles, htfSetups)
 
   const computed = useMemo(() => {
     if (!candles.length) return null
-    const strat = setupToStrategy(dSetup)
     return {
-      series: computeIndicators(candles, dSetup.indicators),
-      result: runBacktest(candles, strat, {}, dConfig),
-      oos: oosStart !== null ? runBacktest(candles, strat, {}, dConfig, oosStart).metrics : null,
+      series: computeIndicators(candles, dSetup.indicators, htf),
+      result: runSetup(candles, dSetup, dConfig, 0, htf),
+      oos: oosStart !== null ? runSetup(candles, dSetup, dConfig, oosStart, htf).metrics : null,
     }
-  }, [candles, dSetup, dConfig, oosStart])
+  }, [candles, dSetup, dConfig, oosStart, htf])
 
-  const hasEntries = setup.entryLong.conditions.length + setup.entryShort.conditions.length > 0
+  const hasEntries = !!setup.model || setup.entryLong.conditions.length + setup.entryShort.conditions.length > 0
   const loadedInfo =
     loaded && candles.length
       ? t.ws.loadedInfo(
@@ -278,6 +280,7 @@ export default function Workspace() {
           {computed && view === 'compare' && (
             <ComparePanel
               candles={candles}
+              htf={htf}
               config={dConfig}
               oosStart={oosStart}
               presets={PRESETS}

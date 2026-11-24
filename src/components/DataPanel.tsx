@@ -72,7 +72,7 @@ export function DataPanel({ value, onChange, onLoad, loading, loadedInfo }: Prop
             <span>{t.data.bars}</span>
             <NumberField
               min={100}
-              max={5000}
+              max={50_000}
               step={100}
               value={value.bars}
               onChange={(bars) => onChange({ ...value, bars })}

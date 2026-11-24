@@ -48,7 +48,7 @@ export interface BacktestConfig {
   takeProfitPct: number
 }
 
-export type ExitReason = 'signal' | 'stop' | 'target' | 'liquidation' | 'end'
+export type ExitReason = 'signal' | 'stop' | 'target' | 'liquidation' | 'session' | 'end'
 
 export interface Trade {
   side: 1 | -1

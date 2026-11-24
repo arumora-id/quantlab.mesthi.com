@@ -9,8 +9,10 @@ import type { Candle } from './types'
 export const DEFAULT_BASES = ['/api/binance/fapi/v1', 'https://fapi.binance.com/fapi/v1']
 const MAX_LIMIT = 1500
 
-export const INTERVALS = ['1d', '12h', '8h', '4h', '1h', '15m'] as const
+export const INTERVALS = ['1d', '12h', '8h', '4h', '1h', '30m', '15m', '5m', '1m'] as const
 export type Interval = (typeof INTERVALS)[number]
+/** Every interval the client can fetch (charts use INTERVALS; higher-timeframe context may also use 1w). */
+export type KlineInterval = Interval | '1w'
 
 type RawKline = [number, string, string, string, string, string, ...unknown[]]
 
@@ -61,7 +63,7 @@ export function createBinanceClient(fetchFn: typeof fetch = (...a) => fetch(...a
   }
 
   /** Fetches up to `bars` closed candles, paging backwards from now. */
-  async function klines(symbol: string, interval: Interval, bars: number, signal?: AbortSignal): Promise<Candle[]> {
+  async function klines(symbol: string, interval: KlineInterval, bars: number, signal?: AbortSignal): Promise<Candle[]> {
     const out: Candle[] = []
     let endTime: number | undefined
     while (out.length < bars) {
