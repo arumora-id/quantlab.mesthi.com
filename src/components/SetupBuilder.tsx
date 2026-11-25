@@ -168,6 +168,18 @@ const MODEL_FIELDS = {
     ['maxWeight', 0.1, 5, 0.1],
     ['rebalanceBand', 0, 1, 0.05],
   ],
+  fibSniper: [
+    ['swing', 1, 50, 1],
+    ['fibLow', 0.1, 0.9, 0.01],
+    ['fibHigh', 0.1, 0.95, 0.01],
+    ['targetExt', 0, 3, 0.05],
+    ['wait', 1, 500, 1],
+    ['requireFvg', 0, 1, 1],
+    ['htfEma', 0, 400, 1],
+    ['riskPct', 0.05, 5, 0.05],
+    ['maxWeight', 0.1, 20, 0.1],
+    ['tickBps', 0.1, 20, 0.1],
+  ],
   fabioProxy: [
     ['deltaMin', 0, 1, 0.05],
     ['watch', 1, 120, 1],
@@ -190,7 +202,9 @@ function ModelPanel({ setup, onChange }: { setup: Setup; onChange: (s: Setup) =>
       <p className="ind-note">
         {model.kind === 'trendEnsemble'
           ? `${t.setup.modelLookbacks}: ${model.lookbacks.join(', ')}`
-          : `${t.setup.mode}: ${model.mode}`}
+          : model.kind === 'fabioProxy'
+            ? `${t.setup.mode}: ${model.mode}`
+            : t.setup.fibSniperRules}
       </p>
       <div className="ind-params">
         {fields.map(([key, min, max, step]) => (

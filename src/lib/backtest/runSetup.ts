@@ -1,6 +1,7 @@
 import { runBacktest } from './engine'
 import { runExposureBacktest } from './exposureEngine'
 import { runFabioBacktest } from './fabioProxy'
+import { runFibSniperBacktest } from './fibSniper'
 import { setupToStrategy, type Setup } from './rules'
 import { trendEnsembleWeights } from './trendEnsemble'
 import type { HtfData } from './timeframe'
@@ -17,6 +18,10 @@ export function runSetup(
   startIndex = 0,
   htf?: HtfData,
 ): BacktestResult {
+  if (setup.model?.kind === 'fibSniper') {
+    const { initialCapital, feeBps, slippageBps } = config
+    return runFibSniperBacktest(candles, setup.model, { initialCapital, feeBps, slippageBps }, startIndex, htf)
+  }
   if (setup.model?.kind === 'fabioProxy') {
     const { initialCapital, feeBps, slippageBps } = config
     return runFabioBacktest(candles, setup.model, { initialCapital, feeBps, slippageBps }, startIndex)
