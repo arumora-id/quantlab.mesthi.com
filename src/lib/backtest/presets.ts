@@ -111,6 +111,31 @@ export const PRESETS: Setup[] = [
     ),
   },
   {
+    // working version of the user's "MTF Fibonacci Sniper with FVG & OB" Pine script; see fibSniper.ts
+    name: 'Fib Sniper: CHoCH + Fibonacci + FVG',
+    research: true,
+    // 1h: on 15m the ~300 trades/year paid more in fees than the edge before costs
+    preferredInterval: '1h',
+    model: {
+      kind: 'fibSniper',
+      swing: 5,
+      fibLow: 0.5,
+      fibHigh: 0.618,
+      targetExt: 0.272,
+      wait: 48,
+      requireFvg: 1,
+      htfEma: 50,
+      riskPct: 1,
+      maxWeight: 1,
+      tickBps: 1,
+    },
+    indicators: [],
+    entryLong: none(),
+    exitLong: none(),
+    entryShort: none(),
+    exitShort: none(),
+  },
+  {
     // experiment spec from the Methoda research agent; a proxy, see fabioProxy.ts
     name: 'Fabio Valentini-inspired: Trend (NY open)',
     research: true,

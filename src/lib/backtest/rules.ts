@@ -2,6 +2,7 @@ import { INDICATOR_BY_ID, source, type Source } from './catalog'
 import { baseSeconds, htfContext, mapToBase, TIMEFRAMES, type HtfData, type IndicatorTf } from './timeframe'
 import type { Interval } from './binanceFutures'
 import type { FabioParams } from './fabioProxy'
+import type { FibSniperParams } from './fibSniper'
 import type { TrendEnsembleParams } from './trendEnsemble'
 import type { Candle, Position, Strategy } from './types'
 
@@ -36,6 +37,7 @@ export interface RuleGroup {
 export type SetupModel =
   | ({ kind: 'trendEnsemble'; rebalanceBand: number } & TrendEnsembleParams)
   | ({ kind: 'fabioProxy' } & FabioParams)
+  | ({ kind: 'fibSniper' } & FibSniperParams)
 
 export interface Setup {
   name: string

@@ -128,6 +128,14 @@ const id = {
     maxWeight: 'Bobot maksimum (1 = tanpa leverage)',
     rebalanceBand: 'Rebalance jika bobot berubah >',
     mode: 'Mode',
+    fibSniperRules: 'CHoCH dari swing terkonfirmasi → entry di zona retracement → stop di titik awal swing, target ekstensi.',
+    swing: 'Lebar swing (bar kiri/kanan)',
+    fibLow: 'Batas zona dekat (0,5)',
+    fibHigh: 'Batas zona jauh (0,618)',
+    targetExt: 'Ekstensi target',
+    wait: 'Batas tunggu retracement (bar)',
+    requireFvg: 'Wajib ada FVG (1 ya, 0 tidak)',
+    htfEma: 'EMA tren 1 jam (0 = mati)',
     deltaMin: 'Ambang delta/volume',
     watch: 'Batas tunggu LVN (bar)',
     riskPct: 'Risiko per trade (% ekuitas)',
@@ -218,10 +226,16 @@ const id = {
     researchHint: 'Bukti untuk aturan persis ini masih lemah atau sedang diuji. Jangan anggap sudah terbukti.',
     modelNote: (vol: number) =>
       `Model ini mengatur ukuran posisinya sendiri (target volatilitas ${vol}% per tahun, tanpa leverage, hanya beli), jadi leverage, stop loss, dan short tidak dipakai.`,
+    modelNoteFib: (risk: number) =>
+      `Model ini menentukan stop (di bawah/atas titik awal swing), target (ekstensi Fibonacci), dan ukuran posisinya sendiri (risiko ${risk}% ekuitas per trade), jadi leverage dan stop loss global tidak dipakai.`,
     modelNoteFabio: (risk: number) =>
       `Model ini menentukan stop, target, dan ukuran posisinya sendiri (risiko ${risk}% ekuitas per trade, hanya di jam sesi, posisi ditutup di akhir sesi), jadi leverage dan stop loss tidak dipakai. Ini proksi dari candle 1 menit, bukan footprint/order flow asli.`,
     custom: (name: string) => `Setup kustom aktif: ${name}. Pilih strategi di atas untuk kembali ke preset.`,
     presets: {
+      'Fib Sniper: CHoCH + Fibonacci + FVG': {
+        tag: 'Smart money · Fibonacci',
+        desc: 'Versi yang diperbaiki dari skrip "MTF Fibonacci Sniper": tunggu perubahan struktur (CHoCH) dengan celah FVG, searah tren 1 jam, lalu beli/jual saat harga koreksi ke zona Fibonacci 0,5–0,618 dan memantul. Stop di titik awal swing, target ekstensi 0,272. Memakai candle 1 jam.',
+      },
       'Fabio Valentini-inspired: Trend (NY open)': {
         tag: 'Scalping · proksi',
         desc: 'Terinspirasi Fabio Valentini, proksi profil volume + delta 1 menit. Di jam buka New York: tunggu harga keluar dari area nilai kemarin, lalu masuk saat harga kembali menyentuh LVN dengan tekanan beli/jual searah. Target POC terdekat, stop di balik candle pemicu, risiko 0,25% per trade.',
@@ -500,6 +514,14 @@ const en: Messages = {
     maxWeight: 'Max weight (1 = no leverage)',
     rebalanceBand: 'Rebalance when weight changes >',
     mode: 'Mode',
+    fibSniperRules: 'CHoCH from confirmed swings → entry in the retracement zone → stop at the swing origin, extension target.',
+    swing: 'Swing width (bars each side)',
+    fibLow: 'Near zone edge (0.5)',
+    fibHigh: 'Far zone edge (0.618)',
+    targetExt: 'Target extension',
+    wait: 'Retracement wait (bars)',
+    requireFvg: 'Require an FVG (1 yes, 0 no)',
+    htfEma: '1h trend EMA (0 = off)',
     deltaMin: 'Delta/volume threshold',
     watch: 'LVN wait (bars)',
     riskPct: 'Risk per trade (% equity)',
@@ -590,10 +612,16 @@ const en: Messages = {
     researchHint: 'Evidence for these exact rules is weak or still being tested. Do not treat it as proven.',
     modelNote: (vol) =>
       `This model sizes its own position (target volatility ${vol}% per year, no leverage, long only), so leverage, stop loss and shorts do not apply.`,
+    modelNoteFib: (risk) =>
+      `This model sets its own stop (beyond the swing origin), target (Fibonacci extension) and position size (${risk}% of equity at risk per trade), so the global leverage and stop loss do not apply.`,
     modelNoteFabio: (risk) =>
       `This model sets its own stop, target and position size (${risk}% of equity at risk per trade, only in session hours, flat at the session end), so leverage and stop loss do not apply. It is a proxy built from 1-minute candles, not real footprint/order flow.`,
     custom: (name) => `Custom setup active: ${name}. Pick a strategy above to go back to a preset.`,
     presets: {
+      'Fib Sniper: CHoCH + Fibonacci + FVG': {
+        tag: 'Smart money · Fibonacci',
+        desc: 'A fixed version of the "MTF Fibonacci Sniper" script: wait for a change of character (CHoCH) with a fair value gap, in the direction of the 1-hour trend, then enter when price pulls back into the 0.5–0.618 Fibonacci zone and bounces. Stop at the swing origin, 0.272 extension target. Uses 1-hour candles.',
+      },
       'Fabio Valentini-inspired: Trend (NY open)': {
         tag: 'Scalping · proxy',
         desc: 'Inspired by Fabio Valentini, a 1-minute volume-profile + delta proxy. In the New York open: wait for price to leave yesterday’s value area, then enter when it comes back to an LVN with buying/selling pressure in the trade’s direction. Target the nearest POC, stop beyond the trigger candle, 0.25% risk per trade.',
